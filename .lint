@@ -1,0 +1,12 @@
+exclusions:
+  panel-datasource-rule:
+  target-instance-rule:
+  target-job-rule:
+  template-instance-rule:
+  template-job-rule:
+  panel-units-rule:
+    reason: linter does not support sishort
+    entries:
+      - dashboard: PBS Job
+      - dashboard: PBS Node
+      - dashboard: PBS System

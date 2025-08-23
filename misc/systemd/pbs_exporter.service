@@ -1,0 +1,11 @@
+[Unit]
+Description=PBS Prometheus Exporter
+After=network-online.target
+
+[Service]
+User=prometheus
+Restart=on-failure
+ExecStart=/opt/prometheus/pbs_exporter
+
+[Install]
+WantedBy=multi-user.target

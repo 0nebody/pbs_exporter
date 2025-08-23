@@ -1,0 +1,5 @@
+---
+- targets:
+  - pbs-gpu-001
+  - pbs-gpu-002
+  - pbs-gpu-003

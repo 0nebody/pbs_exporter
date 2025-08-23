@@ -1,0 +1,97 @@
+{
+    "timestamp": 1745967166,
+    "pbs_version": "2024.1.2.20241017100211",
+    "pbs_server": "pbs",
+    "nodes": {
+        "cpu1n001": {
+            "Mom": "cpu1n001.local.domain",
+            "Port": 15002,
+            "pbs_version": "2024.1.2.20241017100211",
+            "ntype": "PBS",
+            "state": "free",
+            "pcpus": 384,
+            "resources_available": {
+                "arch": "linux",
+                "host": "cpu1n001",
+                "hpmem": "0b",
+                "mem": "0b",
+                "ncpus": 0,
+                "vmem": "0b",
+                "vnode": "cpu1n001",
+                "vntype": "cpu_inter"
+            },
+            "resources_assigned": {},
+            "resv_enable": "True",
+            "sharing": "default_shared",
+            "in_multivnode_host": 1,
+            "license": "l",
+            "partition": "cpu_inter",
+            "last_state_change_time": 1744259096,
+            "server_instance_id": "login.local.domain:15001"
+        },
+        "cpu1n001[0]": {
+            "Mom": "cpu1n001.local.domain",
+            "Port": 15002,
+            "pbs_version": "2024.1.2.20241017100211",
+            "ntype": "PBS",
+            "state": "free",
+            "pcpus": 188,
+            "jobs": [
+                "1000.pbs"
+            ],
+            "resources_available": {
+                "arch": "linux",
+                "host": "cpu1n001",
+                "hpmem": "2819mb",
+                "mem": "740393mb",
+                "ncpus": 188,
+                "ngpus": 0,
+                "qlist": "cpu_inter_exec,ded_cpu_i",
+                "vmem": "740393mb",
+                "vnode": "cpu1n001[0]",
+                "vntype": "cpu_inter"
+            },
+            "resources_assigned": {
+                "mem": "184549376kb",
+                "ncpus": 42
+            },
+            "resv_enable": "True",
+            "sharing": "default_shared",
+            "in_multivnode_host": 1,
+            "license": "l",
+            "partition": "cpu_inter",
+            "last_state_change_time": 1744259096,
+            "last_used_time": 1745965766,
+            "server_instance_id": "login.local.domain:15001"
+        },
+        "cpu1n001[1]": {
+            "Mom": "cpu1n001.local.domain",
+            "Port": 15002,
+            "pbs_version": "2024.1.2.20241017100211",
+            "ntype": "PBS",
+            "state": "free",
+            "pcpus": 188,
+            "resources_available": {
+                "arch": "linux",
+                "host": "cpu1n001",
+                "hpmem": "2811mb",
+                "mem": "741215mb",
+                "ncpus": 188,
+                "ngpus": 0,
+                "qlist": "cpu_inter_exec,ded_cpu_i",
+                "vmem": "741215mb",
+                "vnode": "cpu1n001[1]",
+                "vntype": "cpu_inter"
+            },
+            "resources_assigned": {},
+            "resv_enable": "True",
+            "sharing": "default_shared",
+            "in_multivnode_host": 1,
+            "license": "l",
+            "partition": "cpu_inter",
+            "last_state_change_time": 1744259096,
+            "last_used_time": 1744111433,
+            "server_instance_id": "login.local.domain:15001"
+        }
+    }
+}

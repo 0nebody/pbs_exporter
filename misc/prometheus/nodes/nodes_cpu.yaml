@@ -1,0 +1,5 @@
+---
+- targets:
+  - pbs-cpu-001
+  - pbs-cpu-002
+  - pbs-cpu-003
