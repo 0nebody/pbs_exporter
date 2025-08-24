@@ -85,7 +85,7 @@ func TestDescribe(t *testing.T) {
 		close(ch)
 
 		got := 0
-		want := 46
+		want := 50
 		for desc := range ch {
 			got++
 

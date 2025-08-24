@@ -104,7 +104,7 @@ g.dashboard.new('PBS Node')
             panels.timeseries.percentunit(
               'Memory Usage',
               'Total utilisation of requested memory for jobs running on selected nodes',
-              [queries.nodeMemoryUsageTotal, queries.nodeMemoryAnon, queries.nodeMemoryFile, queries.nodeMemoryShmem, queries.nodeMemoryFileMapped]
+              [queries.nodeMemoryUsageUsed, queries.nodeMemoryWss, queries.nodeMemoryRss, queries.nodeMemoryCache]
             ),
             if config.pbs.gpus then
               panels.timeseries.base(

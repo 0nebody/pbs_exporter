@@ -19,7 +19,7 @@ func TestDescribeCgroups(t *testing.T) {
 	close(ch)
 
 	got := 0
-	want := 23
+	want := 27
 	for desc := range ch {
 		got++
 

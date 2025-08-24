@@ -155,16 +155,20 @@ func TestStat(t *testing.T) {
 			},
 		},
 		Memory: Memory{
-			AnonUsage:       0.0,
-			FileMappedUsage: 0.0,
-			FileUsage:       0.0,
-			Limit:           111.0,
-			Pgfault:         0.0,
-			Pgmajfault:      0.0,
-			ShmemUsage:      0.0,
-			SwapLimit:       0.0,
-			SwapUsage:       0.0,
-			Usage:           222.0,
+			ActiveAnon:   1.0,
+			ActiveFile:   2.0,
+			FileMapped:   328.0,
+			InactiveAnon: 4.0,
+			InactiveFile: 5.0,
+			Limit:        999.0,
+			Pgfault:      0.0,
+			Pgmajfault:   0.0,
+			Rss:          333.0,
+			Shmem:        0.0,
+			SwapLimit:    0.0,
+			SwapUsage:    0.0,
+			Usage:        222.0,
+			Wss:          217.0,
 		},
 		Tasks: Tasks{
 			PidLimit:    200.0,
@@ -228,11 +232,24 @@ func TestStat(t *testing.T) {
 					},
 				},
 				Memory: &v1.MemoryStat{
+					TotalActiveAnon:   1.0,
+					TotalActiveFile:   2.0,
+					TotalInactiveAnon: 4.0,
+					TotalInactiveFile: 5.0,
+					TotalPgFault:      0.0,
+					TotalPgMajFault:   0.0,
+					TotalRSS:          333.0,
 					Usage: &v1.MemoryEntry{
-						Limit:   111,
+						Limit:   999,
 						Usage:   222,
-						Max:     333,
+						Max:     222,
 						Failcnt: 444,
+					},
+					Swap: &v1.MemoryEntry{
+						Limit:   0,
+						Usage:   0,
+						Max:     0,
+						Failcnt: 0,
 					},
 				},
 				Pids: &v1.PidsStat{
@@ -252,7 +269,7 @@ func TestStat(t *testing.T) {
 			t.Fatalf("Expected no error, got %v", err)
 		}
 		if !reflect.DeepEqual(got, want) {
-			t.Errorf("Stat() = %v, want %v", got, want)
+			t.Errorf("Stat() = %+v, want %+v", got, want)
 		}
 	})
 
@@ -283,8 +300,16 @@ func TestStat(t *testing.T) {
 					},
 				},
 				Memory: &v2.MemoryStat{
-					Usage:      222,
-					UsageLimit: 111,
+					ActiveAnon:   1.0,
+					ActiveFile:   2.0,
+					Anon:         5,
+					FileMapped:   328,
+					InactiveAnon: 4.0,
+					InactiveFile: 5.0,
+					Pgfault:      0.0,
+					Pgmajfault:   0.0,
+					Usage:        222,
+					UsageLimit:   999,
 				},
 				Pids: &v2.PidsStat{
 					Current: 100,
@@ -303,7 +328,7 @@ func TestStat(t *testing.T) {
 			t.Fatalf("Expected no error, got %v", err)
 		}
 		if !reflect.DeepEqual(got, want) {
-			t.Errorf("Stat() = %v, want %v", got, want)
+			t.Errorf("Stat() = %+v, want %+v", got, want)
 		}
 	})
 }

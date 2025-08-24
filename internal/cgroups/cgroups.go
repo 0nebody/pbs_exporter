@@ -3,6 +3,7 @@ package cgroups
 import (
 	"errors"
 	"io/fs"
+	"math"
 	"os"
 	"path/filepath"
 	"slices"
@@ -104,25 +105,29 @@ type IO struct {
 }
 
 type Memory struct {
-	AnonUsage       float64
-	FileMappedUsage float64
-	FileUsage       float64
-	Limit           float64
-	Pgfault         float64
-	Pgmajfault      float64
-	ShmemUsage      float64
-	SwapLimit       float64
-	SwapUsage       float64
-	Usage           float64
+	ActiveAnon   float64
+	ActiveFile   float64
+	FileMapped   float64
+	InactiveAnon float64
+	InactiveFile float64
+	Limit        float64
+	Pgfault      float64
+	Pgmajfault   float64
+	Rss          float64
+	Shmem        float64
+	SwapLimit    float64
+	SwapUsage    float64
+	Usage        float64
+	Wss          float64
 }
 
 type Tasks struct {
 	PidLimit    float64
-	Pids        []uint64
 	PidUsage    float64
+	Pids        []uint64
 	ThreadLimit float64
-	Threads     []uint64
 	ThreadUsage float64
+	Threads     []uint64
 }
 
 func (m *CgroupV1Manager) List(path string) ([]string, error) {
@@ -258,18 +263,30 @@ func (c *CgroupV1) Stat() (*Metrics, error) {
 		statMemory := stat.GetMemory()
 		statMemoryUsage := statMemory.GetUsage()
 		statMemorySwap := statMemory.GetSwap()
-		metrics.Memory.AnonUsage = float64(statMemory.GetTotalRSS())
-		metrics.Memory.FileMappedUsage = float64(statMemory.GetMappedFile())
-		metrics.Memory.FileUsage = float64(statMemory.GetTotalCache())
-		metrics.Memory.Limit = float64(statMemoryUsage.GetLimit())
-		metrics.Memory.Pgfault = float64(statMemory.GetPgFault())
-		metrics.Memory.Pgmajfault = float64(statMemory.GetPgMajFault())
-		metrics.Memory.ShmemUsage = float64(0)
-		metrics.Memory.SwapLimit = float64(statMemorySwap.GetLimit())
-		metrics.Memory.SwapUsage = float64(statMemorySwap.GetUsage())
-		metrics.Memory.Usage = float64(statMemoryUsage.GetUsage())
 
-		if metrics.Memory.Limit > 8e+18 {
+		metrics.Memory.ActiveAnon = float64(statMemory.GetTotalActiveAnon())
+		metrics.Memory.ActiveFile = float64(statMemory.GetTotalActiveFile())
+		metrics.Memory.FileMapped = float64(statMemory.GetTotalRSS() - statMemory.GetTotalActiveAnon() - statMemory.GetTotalInactiveAnon())
+		metrics.Memory.InactiveAnon = float64(statMemory.GetTotalInactiveAnon())
+		metrics.Memory.InactiveFile = float64(statMemory.GetTotalInactiveFile())
+		metrics.Memory.Limit = float64(statMemoryUsage.GetLimit())
+		metrics.Memory.Rss = float64(statMemory.GetTotalRSS())
+		// unavailable in cgroups v1
+		metrics.Memory.Shmem = float64(0)
+		metrics.Memory.Usage = float64(statMemoryUsage.GetUsage())
+		metrics.Memory.Wss = float64(statMemoryUsage.GetUsage() - statMemory.GetTotalInactiveFile())
+
+		if statMemorySwap.GetUsage() >= statMemoryUsage.GetUsage() {
+			metrics.Memory.SwapUsage = float64(statMemorySwap.GetUsage() - statMemoryUsage.GetUsage())
+		}
+		if statMemorySwap.GetLimit() >= statMemoryUsage.GetLimit() {
+			metrics.Memory.SwapLimit = float64(statMemorySwap.GetLimit() - statMemoryUsage.GetLimit())
+		}
+
+		metrics.Memory.Pgfault = float64(statMemory.PgFault)
+		metrics.Memory.Pgmajfault = float64(statMemory.PgMajFault)
+
+		if metrics.Memory.Limit >= float64(math.MaxUint64) {
 			return nil, ErrCgroupUninitialised
 		}
 	}
@@ -352,16 +369,23 @@ func (c *CgroupV2) Stat() (*Metrics, error) {
 
 	if slices.Contains(metrics.Controllers, "memory") {
 		statMemory := stat.GetMemory()
-		metrics.Memory.AnonUsage = float64(statMemory.GetAnon())
-		metrics.Memory.FileMappedUsage = float64(statMemory.GetFileMapped())
-		metrics.Memory.FileUsage = float64(statMemory.GetFile())
+
+		metrics.Memory.ActiveAnon = float64(statMemory.GetActiveAnon())
+		metrics.Memory.ActiveFile = float64(statMemory.GetActiveFile())
+		metrics.Memory.FileMapped = float64(statMemory.GetFileMapped())
+		metrics.Memory.InactiveAnon = float64(statMemory.GetInactiveAnon())
+		metrics.Memory.InactiveFile = float64(statMemory.GetInactiveFile())
 		metrics.Memory.Limit = float64(statMemory.GetUsageLimit())
+		metrics.Memory.Rss = float64(statMemory.GetAnon() + statMemory.GetFileMapped())
+		metrics.Memory.Shmem = float64(statMemory.GetShmem())
+		metrics.Memory.Usage = float64(statMemory.GetUsage())
+		metrics.Memory.Wss = float64(statMemory.GetUsage() - statMemory.GetInactiveFile())
+
+		metrics.Memory.SwapUsage = float64(statMemory.GetSwapUsage())
+		metrics.Memory.SwapLimit = float64(statMemory.GetSwapLimit())
+
 		metrics.Memory.Pgfault = float64(statMemory.GetPgfault())
 		metrics.Memory.Pgmajfault = float64(statMemory.GetPgmajfault())
-		metrics.Memory.ShmemUsage = float64(statMemory.GetShmem())
-		metrics.Memory.SwapLimit = float64(statMemory.GetSwapLimit())
-		metrics.Memory.SwapUsage = float64(statMemory.GetSwapUsage())
-		metrics.Memory.Usage = float64(statMemory.GetUsage())
 	}
 
 	if slices.Contains(metrics.Controllers, "pids") {
