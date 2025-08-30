@@ -94,7 +94,7 @@ local prometheusQuery = g.query.prometheus;
       '$' + variables.datasource.name,
       |||
         sum by (jobid) (
-          pbs_cgroup_memory_limit_bytes{instance=~"$node", jobid="$jobid"}
+          pbs_cgroup_mem_limit_bytes{instance=~"$node", jobid="$jobid"}
         )
       |||
     )
@@ -106,60 +106,48 @@ local prometheusQuery = g.query.prometheus;
       '$' + variables.datasource.name,
       |||
         sum by (jobid) (
-          pbs_cgroup_memory_usage_bytes{instance=~"$node", jobid="$jobid"}
+          pbs_cgroup_mem_usage_bytes{instance=~"$node", jobid="$jobid"}
         )
       |||
     )
     + prometheusQuery.withEditorMode('code')
     + prometheusQuery.withLegendFormat('Used'),
 
-  cgroupMemoryAnon:
+  cgroupMemoryRss:
     prometheusQuery.new(
       '$' + variables.datasource.name,
       |||
         sum by (jobid) (
-          pbs_cgroup_memory_anon_bytes{instance=~"$node", jobid="$jobid"}
+          pbs_cgroup_mem_rss_bytes{instance=~"$node", jobid="$jobid"}
         )
       |||
     )
     + prometheusQuery.withEditorMode('code')
-    + prometheusQuery.withLegendFormat('Anonymous'),
+    + prometheusQuery.withLegendFormat('RSS'),
 
-  cgroupMemoryFile:
+  cgroupMemoryWss:
     prometheusQuery.new(
       '$' + variables.datasource.name,
       |||
         sum by (jobid) (
-          pbs_cgroup_memory_file_bytes{instance=~"$node", jobid="$jobid"}
+          pbs_cgroup_mem_wss_bytes{instance=~"$node", jobid="$jobid"}
         )
       |||
     )
     + prometheusQuery.withEditorMode('code')
-    + prometheusQuery.withLegendFormat('File'),
+    + prometheusQuery.withLegendFormat('WSS'),
 
-  cgroupMemoryShmem:
+  cgroupMemoryCache:
     prometheusQuery.new(
       '$' + variables.datasource.name,
       |||
         sum by (jobid) (
-          pbs_cgroup_memory_shmem_bytes{instance=~"$node", jobid="$jobid"}
+          pbs_cgroup_mem_inactive_file_bytes{instance=~"$node", jobid="$jobid"}
         )
       |||
     )
     + prometheusQuery.withEditorMode('code')
-    + prometheusQuery.withLegendFormat('Shared'),
-
-  cgroupMemoryFileMapped:
-    prometheusQuery.new(
-      '$' + variables.datasource.name,
-      |||
-        sum by (jobid) (
-          pbs_cgroup_memory_file_mapped_bytes{instance=~"$node", jobid="$jobid"}
-        )
-      |||
-    )
-    + prometheusQuery.withEditorMode('code')
-    + prometheusQuery.withLegendFormat('File Mapped'),
+    + prometheusQuery.withLegendFormat('Cache'),
 
   cgroupMemoryPgFault:
     prometheusQuery.new(
@@ -167,7 +155,7 @@ local prometheusQuery = g.query.prometheus;
       |||
         sum by (jobid) (
           rate(
-            pbs_cgroup_memory_pgfault_total{instance=~"$node", jobid="$jobid"}[$__rate_interval]
+            pbs_cgroup_mem_pgfault_total{instance=~"$node", jobid="$jobid"}[$__rate_interval]
           )
         )
       |||
@@ -181,7 +169,7 @@ local prometheusQuery = g.query.prometheus;
       |||
         sum by (jobid) (
           rate(
-            pbs_cgroup_memory_pgmajfault_total{instance=~"$node", jobid="$jobid"}[$__rate_interval]
+            pbs_cgroup_mem_pgmajfault_total{instance=~"$node", jobid="$jobid"}[$__rate_interval]
           )
         )
       |||
@@ -194,7 +182,7 @@ local prometheusQuery = g.query.prometheus;
       '$' + variables.datasource.name,
       |||
         sum by (jobid) (
-          pbs_cgroup_memory_swap_limit_bytes{instance=~"$node", jobid="$jobid"}
+          pbs_cgroup_mem_swap_limit_bytes{instance=~"$node", jobid="$jobid"}
         )
       |||
     )
@@ -206,7 +194,7 @@ local prometheusQuery = g.query.prometheus;
       '$' + variables.datasource.name,
       |||
         sum by (jobid) (
-          pbs_cgroup_memory_swap_usage_bytes{instance=~"$node", jobid="$jobid"}
+          pbs_cgroup_mem_swap_usage_bytes{instance=~"$node", jobid="$jobid"}
         )
       |||
     )
@@ -218,12 +206,12 @@ local prometheusQuery = g.query.prometheus;
       '$' + variables.datasource.name,
       |||
         sum by (jobid) (
-          pbs_cgroup_memory_usage_bytes{jobid="$jobid"}
+          pbs_cgroup_mem_usage_bytes{jobid="$jobid"}
           and on (jobid, runcount)
           pbs_job_info{username="$username", jobid="$jobid"}
         )
         / sum by (jobid) (
-          pbs_cgroup_memory_limit_bytes{jobid="$jobid"} > 0
+          pbs_cgroup_mem_limit_bytes{jobid="$jobid"} > 0
           and on (jobid, runcount)
           pbs_job_info{username="$username", jobid="$jobid"}
         )
@@ -844,7 +832,7 @@ local prometheusQuery = g.query.prometheus;
       |||
         (
           sum(
-            pbs_cgroup_memory_usage_bytes{}
+            pbs_cgroup_mem_usage_bytes{}
             and on(jobid)
             pbs_job_info{username="$username"}
           )
@@ -1124,92 +1112,76 @@ local prometheusQuery = g.query.prometheus;
       '$' + variables.datasource.name,
       |||
         sum(
-          pbs_cgroup_memory_limit_bytes{instance=~"$node"} < 1e+18
+          pbs_cgroup_mem_limit_bytes{instance=~"$node"} < 1e+18
         )
       |||
     )
     + prometheusQuery.withEditorMode('code')
     + prometheusQuery.withLegendFormat('Requested'),
 
-  nodeMemoryUsageTotal:
+  nodeMemoryUsageUsed:
     prometheusQuery.new(
       '$' + variables.datasource.name,
       |||
         sum(
-          pbs_cgroup_memory_usage_bytes{instance=~"$node"}
+          pbs_cgroup_mem_usage_bytes{instance=~"$node"}
         ) / scalar(
           sum(
-            pbs_cgroup_memory_limit_bytes{instance=~"$node"} < 1.0e18
-          ) 
+            pbs_cgroup_mem_limit_bytes{instance=~"$node"} < 1.0e18
+          )
         )
       |||
     )
     + prometheusQuery.withEditorMode('code')
-    + prometheusQuery.withLegendFormat('Total'),
+    + prometheusQuery.withLegendFormat('Used'),
 
-  nodeMemoryAnon:
+  nodeMemoryRss:
     prometheusQuery.new(
       '$' + variables.datasource.name,
       |||
         sum(
-          pbs_cgroup_memory_anon_bytes{instance=~"$node"}
+          pbs_cgroup_mem_rss_bytes{instance=~"$node"}
         ) / scalar(
           sum(
-            pbs_cgroup_memory_limit_bytes{instance=~"$node"} < 1.0e18
-          ) 
+            pbs_cgroup_mem_limit_bytes{instance=~"$node"} < 1.0e18
+          )
         )
       |||
     )
     + prometheusQuery.withEditorMode('code')
-    + prometheusQuery.withLegendFormat('Anonymous'),
+    + prometheusQuery.withLegendFormat('RSS'),
 
-  nodeMemoryFile:
+  nodeMemoryWss:
     prometheusQuery.new(
       '$' + variables.datasource.name,
       |||
         sum(
-          pbs_cgroup_memory_file_bytes{instance=~"$node"}
+          pbs_cgroup_mem_wss_bytes{instance=~"$node"}
         ) / scalar(
           sum(
-            pbs_cgroup_memory_limit_bytes{instance=~"$node"} < 1.0e18
-          ) 
+            pbs_cgroup_mem_limit_bytes{instance=~"$node"} < 1.0e18
+          )
         )
       |||
     )
     + prometheusQuery.withEditorMode('code')
-    + prometheusQuery.withLegendFormat('File'),
+    + prometheusQuery.withLegendFormat('WSS'),
 
-  nodeMemoryShmem:
+  nodeMemoryCache:
     prometheusQuery.new(
       '$' + variables.datasource.name,
       |||
         sum(
-          pbs_cgroup_memory_shmem_bytes{instance=~"$node"}
+          pbs_cgroup_mem_inactive_file_bytes{instance=~"$node"}
         ) / scalar(
           sum(
-            pbs_cgroup_memory_limit_bytes{instance=~"$node"} < 1.0e18
-          ) 
+            pbs_cgroup_mem_limit_bytes{instance=~"$node"} < 1.0e18
+          )
         )
       |||
     )
     + prometheusQuery.withEditorMode('code')
-    + prometheusQuery.withLegendFormat('Shared'),
-
-  nodeMemoryFileMapped:
-    prometheusQuery.new(
-      '$' + variables.datasource.name,
-      |||
-        sum(
-          pbs_cgroup_memory_file_mapped_bytes{instance=~"$node"}
-        ) / scalar(
-          sum(
-            pbs_cgroup_memory_limit_bytes{instance=~"$node"} < 1.0e18
-          ) 
-        )
-      |||
-    )
-    + prometheusQuery.withEditorMode('code')
-    + prometheusQuery.withLegendFormat('File Mapped'),
+    + prometheusQuery.withLegendFormat('Cache'),
 
   nodeGpusAvailable:
     prometheusQuery.new(
@@ -1325,9 +1297,9 @@ local prometheusQuery = g.query.prometheus;
     avg by (jobid, username, runcount) (
       avg_over_time(
         (
-          pbs_cgroup_memory_usage_bytes{}
+          pbs_cgroup_mem_usage_bytes{}
           /
-          (pbs_cgroup_memory_limit_bytes{} > 0)
+          (pbs_cgroup_mem_limit_bytes{} > 0)
           * 100
         )[3h:5m]
       ) < %(mem_low)s

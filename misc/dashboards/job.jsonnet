@@ -112,10 +112,9 @@ g.dashboard.new('PBS Job')
                 [
                   queries.cgroupMemoryRequested,
                   queries.cgroupMemoryUsed,
-                  queries.cgroupMemoryAnon,
-                  queries.cgroupMemoryFile,
-                  queries.cgroupMemoryShmem,
-                  queries.cgroupMemoryFileMapped,
+                  queries.cgroupMemoryWss,
+                  queries.cgroupMemoryRss,
+                  queries.cgroupMemoryCache,
                 ],
               ),
               if config.pbs.swap then
