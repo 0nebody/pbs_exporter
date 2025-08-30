@@ -11,8 +11,8 @@ on:
       - '**.libsonnet'
       - '**.mod'
       - 'makefile'
-    tags:        
-      - '*'
+    tags:
+      - 'v*'
   pull_request:
     branches:
       - main
@@ -39,7 +39,7 @@ jobs:
         run: make test
       - name: Release Prep
         if: github.ref_type == 'tag'
-        run: | 
+        run: |
           tar -czf dashboards.tar.gz -C misc/dashboards/build .
       - name: Release
         uses: softprops/action-gh-release@v2
