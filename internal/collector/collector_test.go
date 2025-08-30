@@ -79,9 +79,9 @@ func TestNewCollectors(t *testing.T) {
 
 func TestDescribe(t *testing.T) {
 	t.Run("Collectors Enabled", func(t *testing.T) {
-		cm := NewCollectors(configEnabled)
+		collectors := NewCollectors(configEnabled)
 		ch := make(chan *prometheus.Desc, 100)
-		cm.Describe(ch)
+		collectors.Describe(ch)
 		close(ch)
 
 		got := 0
@@ -106,9 +106,9 @@ func TestDescribe(t *testing.T) {
 	})
 
 	t.Run("Collectors Disabled", func(t *testing.T) {
-		cm := NewCollectors(configDisabled)
+		collectors := NewCollectors(configDisabled)
 		ch := make(chan *prometheus.Desc, 100)
-		cm.Describe(ch)
+		collectors.Describe(ch)
 		close(ch)
 
 		got := 0
@@ -124,17 +124,17 @@ func TestDescribe(t *testing.T) {
 
 func TestCollect(t *testing.T) {
 	t.Run("Collectors Enabled", func(t *testing.T) {
-		cm := NewCollectors(configEnabled)
+		collectors := NewCollectors(configEnabled)
 		ch := make(chan prometheus.Metric, 100)
-		cm.Collect(ch)
+		collectors.Collect(ch)
 		close(ch)
 		// won't check actual metrics, as they are tested elsewhere
 	})
 
 	t.Run("Collectors Disabled", func(t *testing.T) {
-		cm := NewCollectors(configDisabled)
+		collectors := NewCollectors(configDisabled)
 		ch := make(chan prometheus.Metric, 100)
-		cm.Collect(ch)
+		collectors.Collect(ch)
 		close(ch)
 
 		got := 0

@@ -10,13 +10,16 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-type CgroupMetrics struct {
+type CgroupCollector struct {
 	cgroupPath          string
 	cgroupRoot          string
 	jobCollectorEnabled bool
 	logger              *slog.Logger
-	procCollector       *ProcMetrics
+	metrics             *CgroupMetrics
+	procCollector       *ProcCollector
+}
 
+type CgroupMetrics struct {
 	cpuCountDesc        *prometheus.Desc
 	cpuSystemDesc       *prometheus.Desc
 	cpuUsageDesc        *prometheus.Desc
@@ -46,13 +49,8 @@ type CgroupMetrics struct {
 	threadUsageDesc     *prometheus.Desc
 }
 
-func NewCgroupMetrics(config CollectorConfig) *CgroupMetrics {
-	return &CgroupMetrics{
-		cgroupPath:          config.CgroupPath,
-		cgroupRoot:          config.CgroupRoot,
-		jobCollectorEnabled: config.EnableJobCollector,
-		logger:              config.Logger,
-
+func NewCgroupCollector(config CollectorConfig) *CgroupCollector {
+	cgroupMetrics := &CgroupMetrics{
 		cpuCountDesc: prometheus.NewDesc(
 			"pbs_cgroup_cpus",
 			"Number of CPUs allocated to the cgroup.",
@@ -216,36 +214,44 @@ func NewCgroupMetrics(config CollectorConfig) *CgroupMetrics {
 			nil,
 		),
 	}
+
+	return &CgroupCollector{
+		cgroupPath:          config.CgroupPath,
+		cgroupRoot:          config.CgroupRoot,
+		jobCollectorEnabled: config.EnableJobCollector,
+		logger:              config.Logger,
+		metrics:             cgroupMetrics,
+	}
 }
 
-func (c *CgroupMetrics) Describe(ch chan<- *prometheus.Desc) {
-	ch <- c.cpuCountDesc
-	ch <- c.cpuSystemDesc
-	ch <- c.cpuUsageDesc
-	ch <- c.cpuUserDesc
-	ch <- c.hugetlbMaxDesc
-	ch <- c.hugetlbUsageDesc
-	ch <- c.ioRbytesDesc
-	ch <- c.ioRiosDesc
-	ch <- c.ioWbytesDesc
-	ch <- c.ioWiosDesc
-	ch <- c.memActiveAnonDesc
-	ch <- c.memActiveFileDesc
-	ch <- c.memFileMappedDesc
-	ch <- c.memInactiveAnonDesc
-	ch <- c.memInactiveFileDesc
-	ch <- c.memLimitDesc
-	ch <- c.memPgfaultDesc
-	ch <- c.memPgmajfaultDesc
-	ch <- c.memRssDesc
-	ch <- c.memShmemDesc
-	ch <- c.memSwapLimitDesc
-	ch <- c.memSwapUsageDesc
-	ch <- c.memUsageDesc
-	ch <- c.memWssDesc
-	ch <- c.pidLimitDesc
-	ch <- c.pidUsageDesc
-	ch <- c.threadUsageDesc
+func (c *CgroupCollector) Describe(ch chan<- *prometheus.Desc) {
+	ch <- c.metrics.cpuCountDesc
+	ch <- c.metrics.cpuSystemDesc
+	ch <- c.metrics.cpuUsageDesc
+	ch <- c.metrics.cpuUserDesc
+	ch <- c.metrics.hugetlbMaxDesc
+	ch <- c.metrics.hugetlbUsageDesc
+	ch <- c.metrics.ioRbytesDesc
+	ch <- c.metrics.ioRiosDesc
+	ch <- c.metrics.ioWbytesDesc
+	ch <- c.metrics.ioWiosDesc
+	ch <- c.metrics.memActiveAnonDesc
+	ch <- c.metrics.memActiveFileDesc
+	ch <- c.metrics.memFileMappedDesc
+	ch <- c.metrics.memInactiveAnonDesc
+	ch <- c.metrics.memInactiveFileDesc
+	ch <- c.metrics.memLimitDesc
+	ch <- c.metrics.memPgfaultDesc
+	ch <- c.metrics.memPgmajfaultDesc
+	ch <- c.metrics.memRssDesc
+	ch <- c.metrics.memShmemDesc
+	ch <- c.metrics.memSwapLimitDesc
+	ch <- c.metrics.memSwapUsageDesc
+	ch <- c.metrics.memUsageDesc
+	ch <- c.metrics.memWssDesc
+	ch <- c.metrics.pidLimitDesc
+	ch <- c.metrics.pidUsageDesc
+	ch <- c.metrics.threadUsageDesc
 }
 
 func getCgroupStats(root string, path string, logger *slog.Logger) ([]*cgroups.Metrics, error) {
@@ -288,7 +294,7 @@ func getCgroupStats(root string, path string, logger *slog.Logger) ([]*cgroups.M
 	return cgroupMetrics, nil
 }
 
-func (c *CgroupMetrics) Collect(ch chan<- prometheus.Metric) {
+func (c *CgroupCollector) Collect(ch chan<- prometheus.Metric) {
 	metrics, err := getCgroupStats(c.cgroupRoot, c.cgroupPath, c.logger)
 	if err != nil {
 		c.logger.Error("Failed to get cgroup metrics", "err", err)
@@ -318,37 +324,37 @@ func (c *CgroupMetrics) Collect(ch chan<- prometheus.Metric) {
 			}
 		}
 
-		ch <- prometheus.MustNewConstMetric(c.cpuCountDesc, prometheus.GaugeValue, float64(metric.Cpu.Count), jobId, jobRunCount)
-		ch <- prometheus.MustNewConstMetric(c.cpuSystemDesc, prometheus.CounterValue, metric.Cpu.System, jobId, jobRunCount)
-		ch <- prometheus.MustNewConstMetric(c.cpuUsageDesc, prometheus.CounterValue, metric.Cpu.Usage, jobId, jobRunCount)
-		ch <- prometheus.MustNewConstMetric(c.cpuUserDesc, prometheus.CounterValue, metric.Cpu.User, jobId, jobRunCount)
-		ch <- prometheus.MustNewConstMetric(c.memActiveAnonDesc, prometheus.GaugeValue, metric.Memory.ActiveAnon, jobId, jobRunCount)
-		ch <- prometheus.MustNewConstMetric(c.memActiveFileDesc, prometheus.GaugeValue, metric.Memory.ActiveFile, jobId, jobRunCount)
-		ch <- prometheus.MustNewConstMetric(c.memFileMappedDesc, prometheus.GaugeValue, metric.Memory.FileMapped, jobId, jobRunCount)
-		ch <- prometheus.MustNewConstMetric(c.memInactiveAnonDesc, prometheus.GaugeValue, metric.Memory.InactiveAnon, jobId, jobRunCount)
-		ch <- prometheus.MustNewConstMetric(c.memInactiveFileDesc, prometheus.GaugeValue, metric.Memory.InactiveFile, jobId, jobRunCount)
-		ch <- prometheus.MustNewConstMetric(c.memLimitDesc, prometheus.GaugeValue, metric.Memory.Limit, jobId, jobRunCount)
-		ch <- prometheus.MustNewConstMetric(c.memPgfaultDesc, prometheus.CounterValue, metric.Memory.Pgfault, jobId, jobRunCount)
-		ch <- prometheus.MustNewConstMetric(c.memPgmajfaultDesc, prometheus.CounterValue, metric.Memory.Pgmajfault, jobId, jobRunCount)
-		ch <- prometheus.MustNewConstMetric(c.memRssDesc, prometheus.GaugeValue, metric.Memory.Rss, jobId, jobRunCount)
-		ch <- prometheus.MustNewConstMetric(c.memShmemDesc, prometheus.GaugeValue, metric.Memory.Shmem, jobId, jobRunCount)
-		ch <- prometheus.MustNewConstMetric(c.memSwapLimitDesc, prometheus.GaugeValue, metric.Memory.SwapLimit, jobId, jobRunCount)
-		ch <- prometheus.MustNewConstMetric(c.memSwapUsageDesc, prometheus.GaugeValue, metric.Memory.SwapUsage, jobId, jobRunCount)
-		ch <- prometheus.MustNewConstMetric(c.memUsageDesc, prometheus.GaugeValue, metric.Memory.Usage, jobId, jobRunCount)
-		ch <- prometheus.MustNewConstMetric(c.memWssDesc, prometheus.GaugeValue, metric.Memory.Wss, jobId, jobRunCount)
+		ch <- prometheus.MustNewConstMetric(c.metrics.cpuCountDesc, prometheus.GaugeValue, float64(metric.Cpu.Count), jobId, jobRunCount)
+		ch <- prometheus.MustNewConstMetric(c.metrics.cpuSystemDesc, prometheus.CounterValue, metric.Cpu.System, jobId, jobRunCount)
+		ch <- prometheus.MustNewConstMetric(c.metrics.cpuUsageDesc, prometheus.CounterValue, metric.Cpu.Usage, jobId, jobRunCount)
+		ch <- prometheus.MustNewConstMetric(c.metrics.cpuUserDesc, prometheus.CounterValue, metric.Cpu.User, jobId, jobRunCount)
+		ch <- prometheus.MustNewConstMetric(c.metrics.memActiveAnonDesc, prometheus.GaugeValue, metric.Memory.ActiveAnon, jobId, jobRunCount)
+		ch <- prometheus.MustNewConstMetric(c.metrics.memActiveFileDesc, prometheus.GaugeValue, metric.Memory.ActiveFile, jobId, jobRunCount)
+		ch <- prometheus.MustNewConstMetric(c.metrics.memFileMappedDesc, prometheus.GaugeValue, metric.Memory.FileMapped, jobId, jobRunCount)
+		ch <- prometheus.MustNewConstMetric(c.metrics.memInactiveAnonDesc, prometheus.GaugeValue, metric.Memory.InactiveAnon, jobId, jobRunCount)
+		ch <- prometheus.MustNewConstMetric(c.metrics.memInactiveFileDesc, prometheus.GaugeValue, metric.Memory.InactiveFile, jobId, jobRunCount)
+		ch <- prometheus.MustNewConstMetric(c.metrics.memLimitDesc, prometheus.GaugeValue, metric.Memory.Limit, jobId, jobRunCount)
+		ch <- prometheus.MustNewConstMetric(c.metrics.memPgfaultDesc, prometheus.CounterValue, metric.Memory.Pgfault, jobId, jobRunCount)
+		ch <- prometheus.MustNewConstMetric(c.metrics.memPgmajfaultDesc, prometheus.CounterValue, metric.Memory.Pgmajfault, jobId, jobRunCount)
+		ch <- prometheus.MustNewConstMetric(c.metrics.memRssDesc, prometheus.GaugeValue, metric.Memory.Rss, jobId, jobRunCount)
+		ch <- prometheus.MustNewConstMetric(c.metrics.memShmemDesc, prometheus.GaugeValue, metric.Memory.Shmem, jobId, jobRunCount)
+		ch <- prometheus.MustNewConstMetric(c.metrics.memSwapLimitDesc, prometheus.GaugeValue, metric.Memory.SwapLimit, jobId, jobRunCount)
+		ch <- prometheus.MustNewConstMetric(c.metrics.memSwapUsageDesc, prometheus.GaugeValue, metric.Memory.SwapUsage, jobId, jobRunCount)
+		ch <- prometheus.MustNewConstMetric(c.metrics.memUsageDesc, prometheus.GaugeValue, metric.Memory.Usage, jobId, jobRunCount)
+		ch <- prometheus.MustNewConstMetric(c.metrics.memWssDesc, prometheus.GaugeValue, metric.Memory.Wss, jobId, jobRunCount)
 		for _, ioUsage := range metric.Io {
 			major := strconv.FormatUint(ioUsage.Major, 10)
-			ch <- prometheus.MustNewConstMetric(c.ioRbytesDesc, prometheus.GaugeValue, ioUsage.Rbytes, jobId, jobRunCount, major)
-			ch <- prometheus.MustNewConstMetric(c.ioRiosDesc, prometheus.GaugeValue, ioUsage.Rios, jobId, jobRunCount, major)
-			ch <- prometheus.MustNewConstMetric(c.ioWbytesDesc, prometheus.GaugeValue, ioUsage.Wbytes, jobId, jobRunCount, major)
-			ch <- prometheus.MustNewConstMetric(c.ioWiosDesc, prometheus.GaugeValue, ioUsage.Wios, jobId, jobRunCount, major)
+			ch <- prometheus.MustNewConstMetric(c.metrics.ioRbytesDesc, prometheus.GaugeValue, ioUsage.Rbytes, jobId, jobRunCount, major)
+			ch <- prometheus.MustNewConstMetric(c.metrics.ioRiosDesc, prometheus.GaugeValue, ioUsage.Rios, jobId, jobRunCount, major)
+			ch <- prometheus.MustNewConstMetric(c.metrics.ioWbytesDesc, prometheus.GaugeValue, ioUsage.Wbytes, jobId, jobRunCount, major)
+			ch <- prometheus.MustNewConstMetric(c.metrics.ioWiosDesc, prometheus.GaugeValue, ioUsage.Wios, jobId, jobRunCount, major)
 		}
-		ch <- prometheus.MustNewConstMetric(c.pidLimitDesc, prometheus.GaugeValue, metric.Tasks.PidLimit, jobId, jobRunCount)
-		ch <- prometheus.MustNewConstMetric(c.pidUsageDesc, prometheus.GaugeValue, metric.Tasks.PidUsage, jobId, jobRunCount)
-		ch <- prometheus.MustNewConstMetric(c.threadUsageDesc, prometheus.GaugeValue, metric.Tasks.ThreadUsage, jobId, jobRunCount)
+		ch <- prometheus.MustNewConstMetric(c.metrics.pidLimitDesc, prometheus.GaugeValue, metric.Tasks.PidLimit, jobId, jobRunCount)
+		ch <- prometheus.MustNewConstMetric(c.metrics.pidUsageDesc, prometheus.GaugeValue, metric.Tasks.PidUsage, jobId, jobRunCount)
+		ch <- prometheus.MustNewConstMetric(c.metrics.threadUsageDesc, prometheus.GaugeValue, metric.Tasks.ThreadUsage, jobId, jobRunCount)
 		for _, hugetlb := range metric.Hugetlb {
-			ch <- prometheus.MustNewConstMetric(c.hugetlbMaxDesc, prometheus.GaugeValue, hugetlb.Max, jobId, jobRunCount, hugetlb.Pagesize)
-			ch <- prometheus.MustNewConstMetric(c.hugetlbUsageDesc, prometheus.GaugeValue, hugetlb.Usage, jobId, jobRunCount, hugetlb.Pagesize)
+			ch <- prometheus.MustNewConstMetric(c.metrics.hugetlbMaxDesc, prometheus.GaugeValue, hugetlb.Max, jobId, jobRunCount, hugetlb.Pagesize)
+			ch <- prometheus.MustNewConstMetric(c.metrics.hugetlbUsageDesc, prometheus.GaugeValue, hugetlb.Usage, jobId, jobRunCount, hugetlb.Pagesize)
 		}
 
 		if c.procCollector != nil {

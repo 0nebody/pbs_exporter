@@ -71,9 +71,9 @@ func TestGetCgroupIo(t *testing.T) {
 }
 
 func TestDescribeProcs(t *testing.T) {
-	pm := NewProcMetrics(configEnabled)
+	procCollector := NewProcCollector(configEnabled)
 	ch := make(chan *prometheus.Desc, 30)
-	pm.Describe(ch)
+	procCollector.Describe(ch)
 	close(ch)
 
 	got := 0
@@ -98,14 +98,14 @@ func TestDescribeProcs(t *testing.T) {
 }
 
 // This method is required by the interface and used only for the tests.
-func (p *ProcMetrics) Collect(ch chan<- prometheus.Metric) {
+func (p *ProcCollector) Collect(ch chan<- prometheus.Metric) {
 	p.CollectForCgroup(ch, "", []uint64{}, "")
 }
 
 func TestCollectProcs(t *testing.T) {
-	pm := NewProcMetrics(configEnabled)
+	procCollector := NewProcCollector(configEnabled)
 	registry := prometheus.NewRegistry()
-	registry.MustRegister(pm)
+	registry.MustRegister(procCollector)
 
 	got := testutil.CollectAndCount(registry)
 	want := 2

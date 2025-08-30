@@ -11,9 +11,9 @@ import (
 )
 
 func TestDescribeJobs(t *testing.T) {
-	jm := NewJobMetrics(configEnabled)
+	jobCollector := NewJobCollector(configEnabled)
 	ch := make(chan *prometheus.Desc, 30)
-	jm.Describe(ch)
+	jobCollector.Describe(ch)
 	close(ch)
 
 	got := 0
@@ -39,8 +39,8 @@ func TestDescribeJobs(t *testing.T) {
 
 func TestCollectJobs(t *testing.T) {
 	hostname = "cpu1n001"
-	jm := NewJobMetrics(configEnabled)
-	jobCache = pbsjobs.NewJobCache(jm.logger, 60, 15*time.Second)
+	jobCollector := NewJobCollector(configEnabled)
+	jobCache = pbsjobs.NewJobCache(jobCollector.logger, 60, 15*time.Second)
 	jobCache.Set("1000", &pbsjobs.Job{
 		ExecHost:    "cpu1n001",
 		JobName:     "test",
@@ -66,7 +66,7 @@ func TestCollectJobs(t *testing.T) {
 		Stime:       time.Now().Unix(),
 	})
 	registry := prometheus.NewRegistry()
-	registry.MustRegister(jm)
+	registry.MustRegister(jobCollector)
 
 	got := testutil.CollectAndCount(registry)
 	want := 11

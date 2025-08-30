@@ -19,10 +19,10 @@ var (
 )
 
 type Collectors struct {
-	cgroupCollector *CgroupMetrics
-	jobCollector    *JobMetrics
-	nodeCollector   *NodeMetrics
-	procCollector   *ProcMetrics
+	cgroupCollector *CgroupCollector
+	jobCollector    *JobCollector
+	nodeCollector   *NodeCollector
+	procCollector   *ProcCollector
 }
 
 type CollectorConfig struct {
@@ -54,25 +54,25 @@ func NewCollectors(config CollectorConfig) *Collectors {
 	collectors := &Collectors{}
 
 	if config.EnableCgroupCollector {
-		collectors.cgroupCollector = NewCgroupMetrics(config)
+		collectors.cgroupCollector = NewCgroupCollector(config)
 	} else {
 		config.Logger.Info("Cgroup collector is disabled")
 	}
 
 	if config.EnableJobCollector {
-		collectors.jobCollector = NewJobMetrics(config)
+		collectors.jobCollector = NewJobCollector(config)
 	} else {
 		config.Logger.Info("PBS Job collector is disabled")
 	}
 
 	if config.EnableNodeCollector {
-		collectors.nodeCollector = NewNodeMetrics(config)
+		collectors.nodeCollector = NewNodeCollector(config)
 	} else {
 		config.Logger.Info("PBS Node collector is disabled")
 	}
 
 	if config.EnableProcCollector {
-		collectors.procCollector = NewProcMetrics(config)
+		collectors.procCollector = NewProcCollector(config)
 	} else {
 		config.Logger.Info("Proc collector is disabled")
 	}

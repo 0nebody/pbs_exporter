@@ -10,16 +10,18 @@ import (
 	"github.com/prometheus/procfs"
 )
 
-type ProcMetrics struct {
-	logger *slog.Logger
+type ProcCollector struct {
+	logger  *slog.Logger
+	metrics *ProcMetrics
+}
 
+type ProcMetrics struct {
 	cgroupIoReadDesc  *prometheus.Desc
 	cgroupIoWriteDesc *prometheus.Desc
 }
 
-func NewProcMetrics(config CollectorConfig) *ProcMetrics {
-	return &ProcMetrics{
-		logger: config.Logger,
+func NewProcCollector(config CollectorConfig) *ProcCollector {
+	procMetrics := &ProcMetrics{
 		cgroupIoReadDesc: prometheus.NewDesc(
 			"pbs_cgroup_io_read_bytes_total",
 			"Total bytes read by the cgroup",
@@ -33,14 +35,19 @@ func NewProcMetrics(config CollectorConfig) *ProcMetrics {
 			nil,
 		),
 	}
+
+	return &ProcCollector{
+		logger:  config.Logger,
+		metrics: procMetrics,
+	}
 }
 
-func (p *ProcMetrics) Describe(ch chan<- *prometheus.Desc) {
-	ch <- p.cgroupIoReadDesc
-	ch <- p.cgroupIoWriteDesc
+func (p *ProcCollector) Describe(ch chan<- *prometheus.Desc) {
+	ch <- p.metrics.cgroupIoReadDesc
+	ch <- p.metrics.cgroupIoWriteDesc
 }
 
-func (p *ProcMetrics) CollectForCgroup(ch chan<- prometheus.Metric, cgroupPath string, procIds []uint64, jobRunCount string) {
+func (p *ProcCollector) CollectForCgroup(ch chan<- prometheus.Metric, cgroupPath string, procIds []uint64, jobRunCount string) {
 	jobId := utils.GetCgroupJobId(cgroupPath)
 	procRoot := procfs.DefaultMountPoint
 
@@ -50,8 +57,8 @@ func (p *ProcMetrics) CollectForCgroup(ch chan<- prometheus.Metric, cgroupPath s
 		return
 	}
 
-	ch <- prometheus.MustNewConstMetric(p.cgroupIoReadDesc, prometheus.CounterValue, float64(ioRead), jobId, jobRunCount)
-	ch <- prometheus.MustNewConstMetric(p.cgroupIoWriteDesc, prometheus.CounterValue, float64(ioWrite), jobId, jobRunCount)
+	ch <- prometheus.MustNewConstMetric(p.metrics.cgroupIoReadDesc, prometheus.CounterValue, float64(ioRead), jobId, jobRunCount)
+	ch <- prometheus.MustNewConstMetric(p.metrics.cgroupIoWriteDesc, prometheus.CounterValue, float64(ioWrite), jobId, jobRunCount)
 }
 
 func GetCgroupIo(procRoot string, pids []uint64, logger *slog.Logger) (uint64, uint64, error) {

@@ -305,9 +305,9 @@ func (m *mockCommandExecutor) execute(command []string) (bytes.Buffer, bytes.Buf
 }
 
 func TestDescribeNodes(t *testing.T) {
-	nm := NewNodeMetrics(configEnabled)
+	nodeCollector := NewNodeCollector(configEnabled)
 	ch := make(chan *prometheus.Desc, 30)
-	nm.Describe(ch)
+	nodeCollector.Describe(ch)
 	close(ch)
 
 	got := 0
@@ -400,12 +400,12 @@ func TestCollectNodes(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			var logBuf bytes.Buffer
 			testLogger := slog.New(slog.NewTextHandler(&logBuf, nil))
-			nm := NewNodeMetrics(configEnabled)
-			nm.executor = tt.mockExecutor
-			nm.logger = testLogger
+			nodeCollector := NewNodeCollector(configEnabled)
+			nodeCollector.executor = tt.mockExecutor
+			nodeCollector.logger = testLogger
 
 			registry := prometheus.NewRegistry()
-			registry.MustRegister(nm)
+			registry.MustRegister(nodeCollector)
 
 			got := testutil.CollectAndCount(registry)
 			if got != tt.metricsCount {
