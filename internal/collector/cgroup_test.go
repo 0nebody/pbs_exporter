@@ -1,6 +1,7 @@
 package collector
 
 import (
+	"reflect"
 	"regexp"
 	"strings"
 	"testing"
@@ -13,13 +14,15 @@ import (
 )
 
 func TestDescribeCgroups(t *testing.T) {
-	cm := NewCgroupMetrics(configEnabled)
-	ch := make(chan *prometheus.Desc, 30)
-	cm.Describe(ch)
-	close(ch)
+	cgroupCollector := NewCgroupCollector(configEnabled)
+	ch := make(chan *prometheus.Desc)
+	go func() {
+		defer close(ch)
+		cgroupCollector.Describe(ch)
+	}()
 
 	got := 0
-	want := 27
+	want := reflect.TypeOf(*cgroupCollector.metrics).NumField()
 	for desc := range ch {
 		got++
 
@@ -40,18 +43,19 @@ func TestDescribeCgroups(t *testing.T) {
 }
 
 func TestCollectCgroups(t *testing.T) {
-	cmConfig := configEnabled
-	cmConfig.EnableJobCollector = false
-	cmConfig.CgroupRoot = "/sys/fs/cgroup"
-	cmConfig.CgroupPath = "user.slice"
-	cm := NewCgroupMetrics(cmConfig)
+	config := configEnabled
+	config.EnableJobCollector = false
+	config.CgroupRoot = "/sys/fs/cgroup"
+	config.CgroupPath = "user.slice"
+	cgroupCollector := NewCgroupCollector(config)
 	registry := prometheus.NewRegistry()
-	registry.MustRegister(cm)
+	registry.MustRegister(cgroupCollector)
 	utils.PbsJobIdRegex = regexp.MustCompile(`/user.slice/user-(\d+).slice`)
 
 	t.Run("CollectAndCount", func(t *testing.T) {
 		got := testutil.CollectAndCount(registry)
-		want := 17
+		// assumes io and hugetlb disabled in test environment
+		want := reflect.TypeOf(*cgroupCollector.metrics).NumField() - 6
 		if got < want {
 			t.Errorf("CollectAndCount() = %d, want %d", got, want)
 		}
@@ -68,11 +72,12 @@ func TestCollectCgroups(t *testing.T) {
 	})
 
 	t.Run("CollectNoJobID", func(t *testing.T) {
-		cmConfig.EnableJobCollector = true
-		jobCache = pbsjobs.NewJobCache(cm.logger, 60, 15*time.Second)
-		cm := NewCgroupMetrics(cmConfig)
+		config.EnableJobCollector = true
+		cgroupCollector := NewCgroupCollector(config)
+		jobCache = pbsjobs.NewJobCache(cgroupCollector.logger, 60, 15*time.Second)
 		registry := prometheus.NewRegistry()
-		registry.MustRegister(cm)
+		registry.MustRegister(cgroupCollector)
+
 		got := testutil.CollectAndCount(registry)
 		want := 0
 		if got != want {

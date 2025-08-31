@@ -1,6 +1,7 @@
 package collector
 
 import (
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -11,13 +12,15 @@ import (
 )
 
 func TestDescribeJobs(t *testing.T) {
-	jm := NewJobMetrics(configEnabled)
-	ch := make(chan *prometheus.Desc, 30)
-	jm.Describe(ch)
-	close(ch)
+	jobCollector := NewJobCollector(configEnabled)
+	ch := make(chan *prometheus.Desc)
+	go func() {
+		defer close(ch)
+		jobCollector.Describe(ch)
+	}()
 
 	got := 0
-	want := 12
+	want := reflect.TypeOf(*jobCollector.metrics).NumField()
 	for desc := range ch {
 		got++
 
@@ -39,8 +42,8 @@ func TestDescribeJobs(t *testing.T) {
 
 func TestCollectJobs(t *testing.T) {
 	hostname = "cpu1n001"
-	jm := NewJobMetrics(configEnabled)
-	jobCache = pbsjobs.NewJobCache(jm.logger, 60, 15*time.Second)
+	jobCollector := NewJobCollector(configEnabled)
+	jobCache = pbsjobs.NewJobCache(jobCollector.logger, 60, 15*time.Second)
 	jobCache.Set("1000", &pbsjobs.Job{
 		ExecHost:    "cpu1n001",
 		JobName:     "test",
@@ -66,10 +69,11 @@ func TestCollectJobs(t *testing.T) {
 		Stime:       time.Now().Unix(),
 	})
 	registry := prometheus.NewRegistry()
-	registry.MustRegister(jm)
+	registry.MustRegister(jobCollector)
 
 	got := testutil.CollectAndCount(registry)
-	want := 11
+	// assume job isn't running
+	want := reflect.TypeOf(*jobCollector.metrics).NumField() - 1
 	if got != want {
 		t.Errorf("CollectAndCount() = %d, want %d", got, want)
 	}

@@ -186,10 +186,13 @@ func (n node) stateAvailable() (bool, error) {
 	return isAvailable && !isUnavailable, nil
 }
 
-type NodeMetrics struct {
-	logger   *slog.Logger
+type NodeCollector struct {
 	executor commandExecutor
+	logger   *slog.Logger
+	metrics  *NodeMetrics
+}
 
+type NodeMetrics struct {
 	hpmemDesc          *prometheus.Desc
 	licenseDesc        *prometheus.Desc
 	memDesc            *prometheus.Desc
@@ -201,10 +204,8 @@ type NodeMetrics struct {
 	stateDesc          *prometheus.Desc
 }
 
-func NewNodeMetrics(config CollectorConfig) *NodeMetrics {
-	return &NodeMetrics{
-		logger:   config.Logger,
-		executor: &shellCommandExecutor{},
+func NewNodeCollector(config CollectorConfig) *NodeCollector {
+	nodeMetrics := &NodeMetrics{
 		hpmemDesc: prometheus.NewDesc(
 			"pbs_node_hpmem_bytes",
 			"Available huge page memory in bytes.",
@@ -260,6 +261,12 @@ func NewNodeMetrics(config CollectorConfig) *NodeMetrics {
 			nil,
 		),
 	}
+
+	return &NodeCollector{
+		logger:   config.Logger,
+		executor: &shellCommandExecutor{},
+		metrics:  nodeMetrics,
+	}
 }
 
 type commandExecutor interface {
@@ -294,7 +301,7 @@ func parsePbsNodes(output []byte, nodes *nodes) error {
 	return nil
 }
 
-func (n *NodeMetrics) getPbsNodes() (nodes, error) {
+func (n *NodeCollector) getPbsNodes() (nodes, error) {
 	var nodeInfo nodes
 
 	command := pbsNodeCommand("")
@@ -310,19 +317,19 @@ func (n *NodeMetrics) getPbsNodes() (nodes, error) {
 	return nodeInfo, err
 }
 
-func (n *NodeMetrics) Describe(ch chan<- *prometheus.Desc) {
-	ch <- n.hpmemDesc
-	ch <- n.licenseDesc
-	ch <- n.memDesc
-	ch <- n.ncpusDesc
-	ch <- n.nfpgasDesc
-	ch <- n.ngpusDesc
-	ch <- n.nodeInfoDesc
-	ch <- n.nodeStateAvailable
-	ch <- n.stateDesc
+func (n *NodeCollector) Describe(ch chan<- *prometheus.Desc) {
+	ch <- n.metrics.hpmemDesc
+	ch <- n.metrics.licenseDesc
+	ch <- n.metrics.memDesc
+	ch <- n.metrics.ncpusDesc
+	ch <- n.metrics.nfpgasDesc
+	ch <- n.metrics.ngpusDesc
+	ch <- n.metrics.nodeInfoDesc
+	ch <- n.metrics.nodeStateAvailable
+	ch <- n.metrics.stateDesc
 }
 
-func (n *NodeMetrics) Collect(ch chan<- prometheus.Metric) {
+func (n *NodeCollector) Collect(ch chan<- prometheus.Metric) {
 	nodeinfo, err := n.getPbsNodes()
 	if err != nil {
 		n.logger.Error("Error collecting node info from pbsnodes", "err", err)
@@ -359,14 +366,14 @@ func (n *NodeMetrics) Collect(ch chan<- prometheus.Metric) {
 			v.ResourcesAvailable.Qlist,
 		}
 
-		ch <- prometheus.MustNewConstMetric(n.hpmemDesc, prometheus.GaugeValue, float64(v.ResourcesAvailable.Hpmem), commonLabels...)
-		ch <- prometheus.MustNewConstMetric(n.licenseDesc, prometheus.GaugeValue, float64(v.getIsLicensed()), commonLabels...)
-		ch <- prometheus.MustNewConstMetric(n.memDesc, prometheus.GaugeValue, float64(v.ResourcesAvailable.Mem), commonLabels...)
-		ch <- prometheus.MustNewConstMetric(n.ncpusDesc, prometheus.GaugeValue, float64(v.ResourcesAvailable.Ncpus), commonLabels...)
-		ch <- prometheus.MustNewConstMetric(n.nfpgasDesc, prometheus.GaugeValue, float64(v.ResourcesAvailable.Nfpgas), commonLabels...)
-		ch <- prometheus.MustNewConstMetric(n.ngpusDesc, prometheus.GaugeValue, float64(v.ResourcesAvailable.Ngpus), commonLabels...)
-		ch <- prometheus.MustNewConstMetric(n.nodeInfoDesc, prometheus.GaugeValue, float64(1), fullLabels...)
-		ch <- prometheus.MustNewConstMetric(n.nodeStateAvailable, prometheus.GaugeValue, float64(utils.BooleanToInt(isAvailable)), commonLabels...)
-		ch <- prometheus.MustNewConstMetric(n.stateDesc, prometheus.GaugeValue, float64(v.getNodeState()), commonLabels...)
+		ch <- prometheus.MustNewConstMetric(n.metrics.hpmemDesc, prometheus.GaugeValue, float64(v.ResourcesAvailable.Hpmem), commonLabels...)
+		ch <- prometheus.MustNewConstMetric(n.metrics.licenseDesc, prometheus.GaugeValue, float64(v.getIsLicensed()), commonLabels...)
+		ch <- prometheus.MustNewConstMetric(n.metrics.memDesc, prometheus.GaugeValue, float64(v.ResourcesAvailable.Mem), commonLabels...)
+		ch <- prometheus.MustNewConstMetric(n.metrics.ncpusDesc, prometheus.GaugeValue, float64(v.ResourcesAvailable.Ncpus), commonLabels...)
+		ch <- prometheus.MustNewConstMetric(n.metrics.nfpgasDesc, prometheus.GaugeValue, float64(v.ResourcesAvailable.Nfpgas), commonLabels...)
+		ch <- prometheus.MustNewConstMetric(n.metrics.ngpusDesc, prometheus.GaugeValue, float64(v.ResourcesAvailable.Ngpus), commonLabels...)
+		ch <- prometheus.MustNewConstMetric(n.metrics.nodeInfoDesc, prometheus.GaugeValue, float64(1), fullLabels...)
+		ch <- prometheus.MustNewConstMetric(n.metrics.nodeStateAvailable, prometheus.GaugeValue, float64(utils.BooleanToInt(isAvailable)), commonLabels...)
+		ch <- prometheus.MustNewConstMetric(n.metrics.stateDesc, prometheus.GaugeValue, float64(v.getNodeState()), commonLabels...)
 	}
 }

@@ -4,6 +4,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strconv"
 	"strings"
 	"testing"
@@ -71,13 +72,15 @@ func TestGetCgroupIo(t *testing.T) {
 }
 
 func TestDescribeProcs(t *testing.T) {
-	pm := NewProcMetrics(configEnabled)
-	ch := make(chan *prometheus.Desc, 30)
-	pm.Describe(ch)
-	close(ch)
+	procCollector := NewProcCollector(configEnabled)
+	ch := make(chan *prometheus.Desc)
+	go func() {
+		defer close(ch)
+		procCollector.Describe(ch)
+	}()
 
 	got := 0
-	want := 2
+	want := reflect.TypeOf(*procCollector.metrics).NumField()
 	for desc := range ch {
 		got++
 
@@ -98,17 +101,17 @@ func TestDescribeProcs(t *testing.T) {
 }
 
 // This method is required by the interface and used only for the tests.
-func (p *ProcMetrics) Collect(ch chan<- prometheus.Metric) {
+func (p *ProcCollector) Collect(ch chan<- prometheus.Metric) {
 	p.CollectForCgroup(ch, "", []uint64{}, "")
 }
 
 func TestCollectProcs(t *testing.T) {
-	pm := NewProcMetrics(configEnabled)
+	procCollector := NewProcCollector(configEnabled)
 	registry := prometheus.NewRegistry()
-	registry.MustRegister(pm)
+	registry.MustRegister(procCollector)
 
 	got := testutil.CollectAndCount(registry)
-	want := 2
+	want := reflect.TypeOf(*procCollector.metrics).NumField()
 	if got < want {
 		t.Errorf("CollectAndCount() = %d, want %d", got, want)
 	}
