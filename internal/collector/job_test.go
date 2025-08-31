@@ -1,6 +1,7 @@
 package collector
 
 import (
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -12,12 +13,14 @@ import (
 
 func TestDescribeJobs(t *testing.T) {
 	jobCollector := NewJobCollector(configEnabled)
-	ch := make(chan *prometheus.Desc, 30)
-	jobCollector.Describe(ch)
-	close(ch)
+	ch := make(chan *prometheus.Desc)
+	go func() {
+		defer close(ch)
+		jobCollector.Describe(ch)
+	}()
 
 	got := 0
-	want := 12
+	want := reflect.TypeOf(*jobCollector.metrics).NumField()
 	for desc := range ch {
 		got++
 
@@ -69,7 +72,8 @@ func TestCollectJobs(t *testing.T) {
 	registry.MustRegister(jobCollector)
 
 	got := testutil.CollectAndCount(registry)
-	want := 11
+	// assume job isn't running
+	want := reflect.TypeOf(*jobCollector.metrics).NumField() - 1
 	if got != want {
 		t.Errorf("CollectAndCount() = %d, want %d", got, want)
 	}

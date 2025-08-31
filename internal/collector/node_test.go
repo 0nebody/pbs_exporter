@@ -306,12 +306,14 @@ func (m *mockCommandExecutor) execute(command []string) (bytes.Buffer, bytes.Buf
 
 func TestDescribeNodes(t *testing.T) {
 	nodeCollector := NewNodeCollector(configEnabled)
-	ch := make(chan *prometheus.Desc, 30)
-	nodeCollector.Describe(ch)
-	close(ch)
+	ch := make(chan *prometheus.Desc)
+	go func() {
+		defer close(ch)
+		nodeCollector.Describe(ch)
+	}()
 
 	got := 0
-	want := 9
+	want := reflect.TypeOf(*nodeCollector.metrics).NumField()
 	for desc := range ch {
 		got++
 

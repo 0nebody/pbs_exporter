@@ -4,6 +4,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strconv"
 	"strings"
 	"testing"
@@ -72,12 +73,14 @@ func TestGetCgroupIo(t *testing.T) {
 
 func TestDescribeProcs(t *testing.T) {
 	procCollector := NewProcCollector(configEnabled)
-	ch := make(chan *prometheus.Desc, 30)
-	procCollector.Describe(ch)
-	close(ch)
+	ch := make(chan *prometheus.Desc)
+	go func() {
+		defer close(ch)
+		procCollector.Describe(ch)
+	}()
 
 	got := 0
-	want := 2
+	want := reflect.TypeOf(*procCollector.metrics).NumField()
 	for desc := range ch {
 		got++
 
@@ -108,7 +111,7 @@ func TestCollectProcs(t *testing.T) {
 	registry.MustRegister(procCollector)
 
 	got := testutil.CollectAndCount(registry)
-	want := 2
+	want := reflect.TypeOf(*procCollector.metrics).NumField()
 	if got < want {
 		t.Errorf("CollectAndCount() = %d, want %d", got, want)
 	}

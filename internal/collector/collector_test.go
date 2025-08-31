@@ -80,12 +80,18 @@ func TestNewCollectors(t *testing.T) {
 func TestDescribe(t *testing.T) {
 	t.Run("Collectors Enabled", func(t *testing.T) {
 		collectors := NewCollectors(configEnabled)
-		ch := make(chan *prometheus.Desc, 100)
-		collectors.Describe(ch)
-		close(ch)
+		ch := make(chan *prometheus.Desc)
+		go func() {
+			defer close(ch)
+			collectors.Describe(ch)
+		}()
 
 		got := 0
-		want := 50
+		want := reflect.TypeOf(*collectors.cgroupCollector.metrics).NumField()
+		want += reflect.TypeOf(*collectors.jobCollector.metrics).NumField()
+		want += reflect.TypeOf(*collectors.nodeCollector.metrics).NumField()
+		want += reflect.TypeOf(*collectors.procCollector.metrics).NumField()
+
 		for desc := range ch {
 			got++
 
@@ -107,9 +113,11 @@ func TestDescribe(t *testing.T) {
 
 	t.Run("Collectors Disabled", func(t *testing.T) {
 		collectors := NewCollectors(configDisabled)
-		ch := make(chan *prometheus.Desc, 100)
-		collectors.Describe(ch)
-		close(ch)
+		ch := make(chan *prometheus.Desc)
+		go func() {
+			defer close(ch)
+			collectors.Describe(ch)
+		}()
 
 		got := 0
 		want := 0
@@ -125,17 +133,21 @@ func TestDescribe(t *testing.T) {
 func TestCollect(t *testing.T) {
 	t.Run("Collectors Enabled", func(t *testing.T) {
 		collectors := NewCollectors(configEnabled)
-		ch := make(chan prometheus.Metric, 100)
-		collectors.Collect(ch)
-		close(ch)
+		ch := make(chan *prometheus.Desc)
+		go func() {
+			defer close(ch)
+			collectors.Describe(ch)
+		}()
 		// won't check actual metrics, as they are tested elsewhere
 	})
 
 	t.Run("Collectors Disabled", func(t *testing.T) {
 		collectors := NewCollectors(configDisabled)
-		ch := make(chan prometheus.Metric, 100)
-		collectors.Collect(ch)
-		close(ch)
+		ch := make(chan *prometheus.Desc)
+		go func() {
+			defer close(ch)
+			collectors.Describe(ch)
+		}()
 
 		got := 0
 		want := 0

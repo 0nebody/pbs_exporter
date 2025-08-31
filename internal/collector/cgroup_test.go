@@ -1,6 +1,7 @@
 package collector
 
 import (
+	"reflect"
 	"regexp"
 	"strings"
 	"testing"
@@ -14,12 +15,14 @@ import (
 
 func TestDescribeCgroups(t *testing.T) {
 	cgroupCollector := NewCgroupCollector(configEnabled)
-	ch := make(chan *prometheus.Desc, 30)
-	cgroupCollector.Describe(ch)
-	close(ch)
+	ch := make(chan *prometheus.Desc)
+	go func() {
+		defer close(ch)
+		cgroupCollector.Describe(ch)
+	}()
 
 	got := 0
-	want := 27
+	want := reflect.TypeOf(*cgroupCollector.metrics).NumField()
 	for desc := range ch {
 		got++
 
@@ -51,7 +54,8 @@ func TestCollectCgroups(t *testing.T) {
 
 	t.Run("CollectAndCount", func(t *testing.T) {
 		got := testutil.CollectAndCount(registry)
-		want := 17
+		// assumes io and hugetlb disabled in test environment
+		want := reflect.TypeOf(*cgroupCollector.metrics).NumField() - 6
 		if got < want {
 			t.Errorf("CollectAndCount() = %d, want %d", got, want)
 		}
