@@ -200,7 +200,7 @@ func TestJobCacheGet(t *testing.T) {
 
 func TestJobCacheSet(t *testing.T) {
 	now := time.Now().Unix()
-	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
+	logger := slog.Default()
 	jobCache := NewJobCache(logger, 60, 15*time.Second)
 
 	tests := []struct {

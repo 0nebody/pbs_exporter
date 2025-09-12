@@ -1,7 +1,6 @@
 package pbsjobs
 
 import (
-	"bytes"
 	"fmt"
 	"io/fs"
 	"log"
@@ -9,14 +8,12 @@ import (
 	"os"
 	"os/user"
 	"path/filepath"
-	"reflect"
 	"regexp"
 	"strconv"
 	"strings"
 	"sync"
 
 	"github.com/0nebody/pbs_exporter/internal/utils"
-	"github.com/docker/go-units"
 	"github.com/fsnotify/fsnotify"
 )
 
@@ -24,18 +21,11 @@ var (
 	pbsVnodeRegexp = regexp.MustCompile(`[a-zA-Z0-9_.-]+\[(\d)\]`)
 )
 
-type JobMap struct {
-	data     string
-	path     []string
-	rvField  reflect.Value
-	sentinel string
-}
-
 // ResourcesUsed.Cpus can be json '{"host.domain": "1"}' or comma separated list '1,2,3,4'
 // TODO: set ResourcesUsed.Cpus to int once PBS fixes issues with returning json.
 type ResourcesUsed struct {
 	Cpupercent int      `pbs:"cpupercent"`
-	Cpus       []string `pbs:"cpus"`
+	Cpus       []string `pbs:"cpus" sep:","`
 	Cput       string   `pbs:"cput"`
 	Mem        int64    `pbs:"mem"`
 	Ncpus      int      `pbs:"ncpus"`
@@ -43,7 +33,6 @@ type ResourcesUsed struct {
 	Vmem       int64    `pbs:"vmem"`
 	Walltime   string   `pbs:"walltime"`
 }
-
 type ResourceList struct {
 	Mem      int64  `pbs:"mem"`
 	Ncpus    int    `pbs:"ncpus"`
@@ -60,23 +49,24 @@ type Job struct {
 	JobState      string        `pbs:"job_state"`
 	Queue         string        `pbs:"queue"`
 	Server        string        `pbs:"server"`
+	AccountName   string        `pbs:"Account_Name"`
 	Checkpoint    string        `pbs:"Checkpoint"`
 	ErrorPath     string        `pbs:"Error_Path"`
-	ExecHost      string        `pbs:"exec_host2"`
-	ExecVnode     string        `pbs:"exec_vnode"`
+	ExecHost      string        `pbs:"exec_host2" sep:"+"`
+	ExecVnode     string        `pbs:"exec_vnode" sep:"+"`
 	Interactive   int           `pbs:"interactive"`
 	JoinPath      string        `pbs:"Join_Path"`
 	KeepFiles     string        `pbs:"Keep_Files"`
 	Mtime         int64         `pbs:"mtime"`
 	OutputPath    string        `pbs:"Output_Path"`
 	ResourceList  ResourceList  `pbs:"Resource_List"`
-	SchedSelect   string        `pbs:"schedselect"`
+	SchedSelect   string        `pbs:"schedselect" sep:":"`
 	Stime         int64         `pbs:"stime"`
 	SessionID     string        `pbs:"session_id"`
 	ShellPathList string        `pbs:"Shell_Path_List"`
 	JobDir        string        `pbs:"jobdir"`
 	Substate      string        `pbs:"substate"`
-	VariableList  []string      `pbs:"Variable_List"`
+	VariableList  []string      `pbs:"Variable_List" sep:","`
 	Euser         string        `pbs:"euser"`
 	Egroup        string        `pbs:"egroup"`
 	Hashname      string        `pbs:"hashname"`
@@ -84,12 +74,14 @@ type Job struct {
 	Umask         string        `pbs:"umask"`
 	RunCount      int           `pbs:"run_count"`
 	JobKillDelay  string        `pbs:"job_kill_delay"`
+	ArrayId       string        `pbs:"array_id"`
+	ArrayIndex    string        `pbs:"array_index"`
 	Executable    string        `pbs:"executable"`
 	ArgumentList  string        `pbs:"argument_list"`
 	Project       string        `pbs:"project"`
 	RunVersion    string        `pbs:"run_version"`
 	SubmitHost    string        `pbs:"Submit_Host"`
-	Binding       string        `pbs:"binding"`
+	Binding       string        `pbs:"binding" sep:":"`
 }
 
 func (j *Job) JobId() string {
@@ -186,133 +178,20 @@ func (j *Job) Vnode() string {
 	return ""
 }
 
-func getFieldName(field reflect.StructField) string {
-	name := field.Name
-	tag := field.Tag.Get("pbs")
-
-	if tag != "" {
-		return tag
-	} else {
-		return name
+func getJobFiles(fileSystem fs.FS) ([]string, error) {
+	files, err := fs.ReadDir(fileSystem, ".")
+	if err != nil {
+		return nil, err
 	}
-}
 
-func createJobMap(rvJob reflect.Value, path []string) []JobMap {
-	jm := []JobMap{}
-	rtJob := rvJob.Type()
-
-	for i := 0; i < rvJob.NumField(); i++ {
-		field := rvJob.Field(i)
-		name := getFieldName(rtJob.Field(i))
-
-		if field.Type().Kind() == reflect.Struct {
-			jm = append(jm, createJobMap(field, append(path, name))...)
-		} else {
-			full_path := append(path, name)
-			jm = append(jm, JobMap{
-				path:     full_path,
-				sentinel: strings.Join(full_path, "\x00"),
-				rvField:  field,
-			})
+	var jobFiles []string
+	for _, file := range files {
+		if strings.HasSuffix(file.Name(), ".JB") {
+			jobFiles = append(jobFiles, file.Name())
 		}
 	}
 
-	return jm
-}
-
-// Assumptions:
-//   - Data is a sequence of key-value pairs, where each key and value is suffixed with \x00.
-//   - A complete match is found when the sentinel and value are prefixed with \x00.
-//   - Keys are unique, if a complete match is found, search stops for that key.
-//   - Partial matches will continue to search for a full match.
-func parseJobMap(data []byte, jobMap []JobMap) {
-	for i, search := range jobMap {
-		searchData := data
-		term := []byte(search.sentinel)
-		for x, d := bytes.Index(searchData, term), 0; x > -1; x, d = bytes.Index(searchData, term), d+x+1 {
-			// exit if the sentinel terminates the data, it will not have a value
-			if x+len(term) >= len(searchData) {
-				searchData = searchData[x+len(term):]
-				continue
-			}
-
-			hasNullPrefix := searchData[0] == 0x00
-
-			// key must end in null byte, key exists as string in value otherwise
-			if searchData[x+len(term)] != 0x00 {
-				searchData = searchData[x+len(term):]
-				continue
-			}
-
-			// value starts after the key + null byte
-			// maintain byte in searchData for next iteration
-			searchData = searchData[x+len(term):]
-
-			// find end of value, which is the next null byte
-			if valueEnd := bytes.IndexByte(searchData[1:], 0x00); valueEnd > -1 {
-				// don't overwrite with empty value
-				if valueEnd > 0 {
-					jobMap[i].data = string(searchData[1 : valueEnd+1])
-				}
-
-				// empty search data if full match found
-				if hasNullPrefix {
-					searchData = searchData[:0]
-				}
-			}
-		}
-	}
-}
-
-func parseJobFile(content []byte) (*Job, []error) {
-	job := &Job{}
-	errors := []error{}
-	rvJob := reflect.ValueOf(job).Elem()
-	jobMap := createJobMap(rvJob, []string{})
-
-	parseJobMap(content, jobMap)
-
-	for _, field := range jobMap {
-		switch field.rvField.Kind() {
-		case reflect.Int, reflect.Int64:
-			if field.data == "" {
-				field.rvField.SetInt(0)
-			} else {
-				if intValue, err := strconv.ParseInt(field.data, 10, 64); err == nil {
-					field.rvField.SetInt(intValue)
-				} else if intValue, err := units.RAMInBytes(field.data); err == nil {
-					field.rvField.SetInt(intValue)
-				} else {
-					errors = append(errors, fmt.Errorf("error parsing job file int: %v %v", field.data, err))
-				}
-			}
-		case reflect.String:
-			field.rvField.SetString(field.data)
-		case reflect.Slice:
-			if field.data != "" {
-				// TODO: make the separator configurable
-				separator := ","
-				values := strings.Split(field.data, separator)
-
-				switch field.rvField.Type().Elem().Kind() {
-				case reflect.String:
-					field.rvField.Set(reflect.ValueOf(values))
-				case reflect.Int:
-					intValues := make([]int, len(values))
-					for i, v := range values {
-						if intValue, err := strconv.Atoi(v); err == nil {
-							intValues[i] = intValue
-						} else {
-							errors = append(errors, fmt.Errorf("error parsing job file int slice: %v %v", v, err))
-						}
-					}
-					field.rvField.Set(reflect.ValueOf(intValues))
-				}
-			}
-		}
-	}
-
-	return job, errors
+	return jobFiles, nil
 }
 
 func ParseJobFiles(pbsJobPath string, logger *slog.Logger) (map[string]*Job, error) {
@@ -339,12 +218,10 @@ func ParseJobFiles(pbsJobPath string, logger *slog.Logger) (map[string]*Job, err
 				return
 			}
 
-			job, errors := parseJobFile(content)
-			if len(errors) > 0 {
-				for _, err := range errors {
-					logger.Error("Error parsing job file", "file", jobFilePath, "error", err)
-				}
-				// return
+			job := &Job{}
+			if err := Unmarshal(content, job); err != nil {
+				logger.Error("Error parsing job file", "file", jobFilePath, "error", err)
+				return
 			}
 
 			mu.Lock()
@@ -355,22 +232,6 @@ func ParseJobFiles(pbsJobPath string, logger *slog.Logger) (map[string]*Job, err
 	wg.Wait()
 
 	return jobs, nil
-}
-
-func getJobFiles(fileSystem fs.FS) ([]string, error) {
-	files, err := fs.ReadDir(fileSystem, ".")
-	if err != nil {
-		return nil, err
-	}
-
-	var jobFiles []string
-	for _, file := range files {
-		if strings.HasSuffix(file.Name(), ".JB") {
-			jobFiles = append(jobFiles, file.Name())
-		}
-	}
-
-	return jobFiles, nil
 }
 
 func NewJobWatcher(path string) (*fsnotify.Watcher, error) {
@@ -402,24 +263,26 @@ func PbsJobEvent(watcher *fsnotify.Watcher, logger *slog.Logger, pbsJobs *JobCac
 
 			switch op := event.Op; op {
 			case fsnotify.Op(fsnotify.Create), fsnotify.Op(fsnotify.Write):
-				logger.Debug("PBS job file modified", "name", event.Name, "op", op)
+				// anonymous function to scope deferral of f.Close()
+				func() {
+					logger.Debug("PBS job file modified", "name", event.Name, "op", op)
 
-				content, err := os.ReadFile(event.Name)
-				if err != nil {
-					logger.Error("Error reading file", "file", event.Name, "error", err)
-					continue
-				}
-
-				job, errors := parseJobFile(content)
-				if len(errors) > 0 {
-					for _, err := range errors {
-						logger.Error("Error parsing job file", "file", event.Name, "error", err)
+					jobFile, err := os.Open(event.Name)
+					if err != nil {
+						logger.Error("Error opening file", "file", event.Name, "error", err)
+						return
 					}
-					continue
-				}
+					defer jobFile.Close()
 
-				pbsJobs.Set(job.JobId(), job)
+					job := &Job{}
+					dec := NewDecoder(jobFile)
+					if err := dec.Decode(job); err != nil {
+						logger.Error("Error parsing job file", "file", event.Name, "error", err)
+						return
+					}
 
+					pbsJobs.Set(job.JobId(), job)
+				}()
 			case fsnotify.Op(fsnotify.Remove):
 				logger.Debug("PBS Job file removed", "name", event.Name, "op", op)
 
