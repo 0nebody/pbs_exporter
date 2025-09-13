@@ -81,7 +81,7 @@ func NewJobMapKey(path []string) (JobMapKey, error) {
 func buildJobMapCache(t reflect.Type, cache JobMap, parent []string, path []int) []JobMapKey {
 	order := []JobMapKey{}
 
-	if t.Kind() == reflect.Ptr {
+	if t.Kind() == reflect.Pointer {
 		t = t.Elem()
 	}
 

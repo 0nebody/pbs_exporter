@@ -49,7 +49,7 @@ func (dec *Decoder) decodeHeader(header *JobHeader) error {
 }
 
 func (dec *Decoder) parseAttributeValue(value string, attr reflect.Value, separator string) error {
-	if attr.Kind() == reflect.Ptr {
+	if attr.Kind() == reflect.Pointer {
 		attr = attr.Elem()
 	}
 

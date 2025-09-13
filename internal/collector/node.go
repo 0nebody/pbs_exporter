@@ -125,8 +125,7 @@ func (n node) getNodeState() int {
 		"powering-on":       65536,
 	}
 
-	nodeStates := strings.Split(n.State, ",")
-	for _, state := range nodeStates {
+	for state := range strings.SplitSeq(n.State, ",") {
 		total += states[state]
 	}
 

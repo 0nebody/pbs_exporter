@@ -112,7 +112,7 @@ func (j *Job) Ngpus() (int, error) {
 		return j.ResourceList.Ngpus, nil
 	}
 
-	for _, selectItem := range strings.Split(j.SchedSelect, ":") {
+	for selectItem := range strings.SplitSeq(j.SchedSelect, ":") {
 		if strings.HasPrefix(selectItem, "ngpus=") {
 			ngpus := strings.Split(selectItem, "=")[1]
 			ngpusInt, err := strconv.Atoi(ngpus)

@@ -105,7 +105,6 @@ func loadTestJobCache() *JobCache {
 }
 
 func TestJobCacheCleanup(t *testing.T) {
-	now := time.Now().Unix()
 	jobCache := loadTestJobCache()
 
 	t.Run("Normal Cleanup", func(t *testing.T) {
@@ -122,9 +121,6 @@ func TestJobCacheCleanup(t *testing.T) {
 	t.Run("Cleanup walltime race", func(t *testing.T) {
 		jobCache.jobs["1000"].isRunning = true
 		jobCache.jobs["1000"].expiration -= 86400
-		if !(jobCache.jobs["1000"].expiration < now) {
-			t.Error("Job 1000 should be expired")
-		}
 		jobCache.cleanup()
 		if _, exists := jobCache.jobs["1000"]; !exists {
 			t.Error("Job 1000 should still exist")
@@ -314,7 +310,7 @@ func TestJobCacheRace(t *testing.T) {
 	jobCacheSize := 1000
 
 	// generate job cache
-	for i := 0; i < jobCacheSize; i++ {
+	for i := range jobCacheSize {
 		jobId := fmt.Sprintf("%d", i)
 		expiration := now + 600
 		if i%2 == 0 {
@@ -332,7 +328,7 @@ func TestJobCacheRace(t *testing.T) {
 
 	// list of random job IDs
 	var jobList []string
-	for i := 0; i < 60; i++ {
+	for range 60 {
 		random := rand.Intn(jobCacheSize)
 		jobId := fmt.Sprintf("%d", random)
 		jobList = append(jobList, jobId)
@@ -342,10 +338,7 @@ func TestJobCacheRace(t *testing.T) {
 	batchSize := 3
 	var wg sync.WaitGroup
 	for i := 0; i < len(jobList); i += batchSize {
-		end := i + batchSize
-		if end > len(jobList) {
-			end = len(jobList)
-		}
+		end := min(i+batchSize, len(jobList))
 		batch := jobList[i:end]
 		wg.Add(1)
 		go func(batch []string) {

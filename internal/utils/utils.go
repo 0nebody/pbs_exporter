@@ -59,8 +59,7 @@ func ParseListFormat(listFormat string) ([]int, error) {
 	}
 
 	var result []int
-	parts := strings.Split(listFormat, ",")
-	for _, part := range parts {
+	for part := range strings.SplitSeq(listFormat, ",") {
 		if strings.Contains(part, "-") {
 			rangeParts := strings.Split(part, "-")
 			start, _ := strconv.Atoi(rangeParts[0])
