@@ -224,6 +224,7 @@ func TestVnode(t *testing.T) {
 		{"(gpu1n001:ncpus=4:ngpus=1:mem=1gb:nfpgas=0)", ""},
 		{"(gpu1n001[a]:ncpus=4:ngpus=1:mem=1gb:nfpgas=0)", ""},
 		{"(gpu1n001[1]:ncpus=4:ngpus=1:mem=1gb:nfpgas=0)", "1"},
+		{"(gpu1n001[111]:ncpus=4:ngpus=1:mem=1gb:nfpgas=0)", "111"},
 		{"(gpu-1_01.local.domain[1]:ncpus=4:ngpus=1:mem=1gb:nfpgas=0)", "1"},
 	}
 
