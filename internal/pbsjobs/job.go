@@ -18,7 +18,7 @@ import (
 )
 
 var (
-	pbsVnodeRegexp = regexp.MustCompile(`[a-zA-Z0-9_.-]+\[(\d)\]`)
+	pbsVnodeRegexp = regexp.MustCompile(`[a-zA-Z0-9_.-]+\[(\d+)\]`)
 )
 
 // ResourcesUsed.Cpus can be json '{"host.domain": "1"}' or comma separated list '1,2,3,4'
