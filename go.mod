@@ -8,7 +8,7 @@ require (
 	github.com/containerd/cgroups/v3 v3.0.5
 	github.com/docker/go-units v0.5.0
 	github.com/fsnotify/fsnotify v1.9.0
-	github.com/prometheus/client_golang v1.23.0
+	github.com/prometheus/client_golang v1.23.2
 	github.com/prometheus/common v0.66.1
 	github.com/prometheus/procfs v0.17.0
 )
