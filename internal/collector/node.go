@@ -167,8 +167,23 @@ func (n node) getNodeStates() ([]string, error) {
 }
 
 func (n node) stateAvailable() (bool, error) {
-	availableStates := []string{"free", "busy", "job-busy", "job-exclusive", "resv-exclusive"}
-	unavailableStates := []string{"down", "maintenance", "offline", "provisioning", "stale", "state-unknown", "unresolvable", "wait-provisioning"}
+	availableStates := []string{
+		"busy",
+		"free",
+		"job-busy",
+		"job-exclusive",
+		"resv-exclusive",
+	}
+	unavailableStates := []string{
+		"down",
+		"maintenance",
+		"offline",
+		"provisioning",
+		"stale",
+		"state-unknown",
+		"unresolvable",
+		"wait-provisioning",
+	}
 
 	nodeStates, err := n.getNodeStates()
 	if err != nil {
@@ -357,14 +372,59 @@ func (n *NodeCollector) Collect(ch chan<- prometheus.Metric) {
 		nodeLabels := []string{v.ResourcesAvailable.Host, vnode}
 		infoLabels := append(nodeLabels, v.Partition, v.ResourcesAvailable.Qlist)
 
-		ch <- prometheus.MustNewConstMetric(n.metrics.hpmemDesc, prometheus.GaugeValue, float64(v.ResourcesAvailable.Hpmem), nodeLabels...)
-		ch <- prometheus.MustNewConstMetric(n.metrics.licenseDesc, prometheus.GaugeValue, float64(v.getIsLicensed()), nodeLabels...)
-		ch <- prometheus.MustNewConstMetric(n.metrics.memDesc, prometheus.GaugeValue, float64(v.ResourcesAvailable.Mem), nodeLabels...)
-		ch <- prometheus.MustNewConstMetric(n.metrics.ncpusDesc, prometheus.GaugeValue, float64(v.ResourcesAvailable.Ncpus), nodeLabels...)
-		ch <- prometheus.MustNewConstMetric(n.metrics.nfpgasDesc, prometheus.GaugeValue, float64(v.ResourcesAvailable.Nfpgas), nodeLabels...)
-		ch <- prometheus.MustNewConstMetric(n.metrics.ngpusDesc, prometheus.GaugeValue, float64(v.ResourcesAvailable.Ngpus), nodeLabels...)
-		ch <- prometheus.MustNewConstMetric(n.metrics.nodeInfoDesc, prometheus.GaugeValue, float64(1), infoLabels...)
-		ch <- prometheus.MustNewConstMetric(n.metrics.nodeStateAvailable, prometheus.GaugeValue, float64(utils.BooleanToInt(isAvailable)), nodeLabels...)
-		ch <- prometheus.MustNewConstMetric(n.metrics.stateDesc, prometheus.GaugeValue, float64(v.getNodeState()), nodeLabels...)
+		ch <- prometheus.MustNewConstMetric(
+			n.metrics.hpmemDesc,
+			prometheus.GaugeValue,
+			float64(v.ResourcesAvailable.Hpmem),
+			nodeLabels...,
+		)
+		ch <- prometheus.MustNewConstMetric(
+			n.metrics.licenseDesc,
+			prometheus.GaugeValue,
+			float64(v.getIsLicensed()),
+			nodeLabels...,
+		)
+		ch <- prometheus.MustNewConstMetric(
+			n.metrics.memDesc,
+			prometheus.GaugeValue,
+			float64(v.ResourcesAvailable.Mem),
+			nodeLabels...,
+		)
+		ch <- prometheus.MustNewConstMetric(
+			n.metrics.ncpusDesc,
+			prometheus.GaugeValue,
+			float64(v.ResourcesAvailable.Ncpus),
+			nodeLabels...,
+		)
+		ch <- prometheus.MustNewConstMetric(
+			n.metrics.nfpgasDesc,
+			prometheus.GaugeValue,
+			float64(v.ResourcesAvailable.Nfpgas),
+			nodeLabels...,
+		)
+		ch <- prometheus.MustNewConstMetric(
+			n.metrics.ngpusDesc,
+			prometheus.GaugeValue,
+			float64(v.ResourcesAvailable.Ngpus),
+			nodeLabels...,
+		)
+		ch <- prometheus.MustNewConstMetric(
+			n.metrics.nodeInfoDesc,
+			prometheus.GaugeValue,
+			float64(1),
+			infoLabels...,
+		)
+		ch <- prometheus.MustNewConstMetric(
+			n.metrics.nodeStateAvailable,
+			prometheus.GaugeValue,
+			float64(utils.BooleanToInt(isAvailable)),
+			nodeLabels...,
+		)
+		ch <- prometheus.MustNewConstMetric(
+			n.metrics.stateDesc,
+			prometheus.GaugeValue,
+			float64(v.getNodeState()),
+			nodeLabels...,
+		)
 	}
 }

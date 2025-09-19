@@ -85,7 +85,8 @@ func NewJobCollector(config CollectorConfig) *JobCollector {
 		infoDesc: prometheus.NewDesc(
 			"pbs_job_info",
 			"Job information.",
-			append(defaultJobLabels, "interactive", "name", "node", "project", "queue", "state", "uid", "username", "vnode"),
+			append(defaultJobLabels,
+				"interactive", "name", "node", "project", "queue", "state", "uid", "username", "vnode"),
 			nil,
 		),
 		interactiveDesc: prometheus.NewDesc(
@@ -208,22 +209,101 @@ func (j *JobCollector) Collect(ch chan<- prometheus.Metric) {
 		}
 
 		jobLabels := []string{jobId, runCount}
-		infoLabels := append(jobLabels, strconv.FormatBool(job.IsInteractive()), job.JobName, hostname, job.Project, job.Queue, job.JobState, jobUserId, job.JobUsername(), job.Vnode())
-		reqLabels := append(jobLabels, strconv.FormatInt(job.ResourceList.Mem, 10), strconv.Itoa(job.ResourceList.Ncpus), strconv.Itoa(job.ResourceList.Nfpgas), strconv.Itoa(nGpus), job.ResourceList.Place, job.ResourceList.Walltime)
+		infoLabels := append(
+			jobLabels,
+			strconv.FormatBool(job.IsInteractive()),
+			job.JobName,
+			hostname,
+			job.Project,
+			job.Queue,
+			job.JobState,
+			jobUserId,
+			job.JobUsername(),
+			job.Vnode(),
+		)
+		reqLabels := append(
+			jobLabels,
+			strconv.FormatInt(job.ResourceList.Mem, 10),
+			strconv.Itoa(job.ResourceList.Ncpus),
+			strconv.Itoa(job.ResourceList.Nfpgas),
+			strconv.Itoa(nGpus),
+			job.ResourceList.Place,
+			job.ResourceList.Walltime,
+		)
 
-		ch <- prometheus.MustNewConstMetric(j.metrics.infoDesc, prometheus.GaugeValue, 1, infoLabels...)
-		ch <- prometheus.MustNewConstMetric(j.metrics.interactiveDesc, prometheus.GaugeValue, float64(utils.BooleanToInt(job.IsInteractive())), jobLabels...)
-		ch <- prometheus.MustNewConstMetric(j.metrics.requestedMemoryDesc, prometheus.GaugeValue, float64(job.ResourceList.Mem), jobLabels...)
-		ch <- prometheus.MustNewConstMetric(j.metrics.requestedNcpusDesc, prometheus.GaugeValue, float64(job.ResourceList.Ncpus), jobLabels...)
-		ch <- prometheus.MustNewConstMetric(j.metrics.requestedNfpgasDesc, prometheus.GaugeValue, float64(job.ResourceList.Nfpgas), jobLabels...)
-		ch <- prometheus.MustNewConstMetric(j.metrics.requestedNgpusDesc, prometheus.GaugeValue, float64(nGpus), jobLabels...)
-		ch <- prometheus.MustNewConstMetric(j.metrics.requestedNodesDesc, prometheus.GaugeValue, float64(nodeSelect), jobLabels...)
-		ch <- prometheus.MustNewConstMetric(j.metrics.requestedWalltimeDesc, prometheus.GaugeValue, float64(job.RequestedWalltime()), jobLabels...)
-		ch <- prometheus.MustNewConstMetric(j.metrics.requestsDesc, prometheus.GaugeValue, 1, reqLabels...)
-		ch <- prometheus.MustNewConstMetric(j.metrics.runCountDesc, prometheus.CounterValue, float64(job.RunCount), jobLabels...)
-		ch <- prometheus.MustNewConstMetric(j.metrics.startTimeDesc, prometheus.GaugeValue, float64(job.Stime), jobLabels...)
+		ch <- prometheus.MustNewConstMetric(
+			j.metrics.infoDesc,
+			prometheus.GaugeValue,
+			1,
+			infoLabels...,
+		)
+		ch <- prometheus.MustNewConstMetric(
+			j.metrics.interactiveDesc,
+			prometheus.GaugeValue,
+			float64(utils.BooleanToInt(job.IsInteractive())),
+			jobLabels...,
+		)
+		ch <- prometheus.MustNewConstMetric(
+			j.metrics.requestedMemoryDesc,
+			prometheus.GaugeValue,
+			float64(job.ResourceList.Mem),
+			jobLabels...,
+		)
+		ch <- prometheus.MustNewConstMetric(
+			j.metrics.requestedNcpusDesc,
+			prometheus.GaugeValue,
+			float64(job.ResourceList.Ncpus),
+			jobLabels...,
+		)
+		ch <- prometheus.MustNewConstMetric(
+			j.metrics.requestedNfpgasDesc,
+			prometheus.GaugeValue,
+			float64(job.ResourceList.Nfpgas),
+			jobLabels...,
+		)
+		ch <- prometheus.MustNewConstMetric(
+			j.metrics.requestedNgpusDesc,
+			prometheus.GaugeValue,
+			float64(nGpus),
+			jobLabels...,
+		)
+		ch <- prometheus.MustNewConstMetric(
+			j.metrics.requestedNodesDesc,
+			prometheus.GaugeValue,
+			float64(nodeSelect),
+			jobLabels...,
+		)
+		ch <- prometheus.MustNewConstMetric(
+			j.metrics.requestedWalltimeDesc,
+			prometheus.GaugeValue,
+			float64(job.RequestedWalltime()),
+			jobLabels...,
+		)
+		ch <- prometheus.MustNewConstMetric(
+			j.metrics.requestsDesc,
+			prometheus.GaugeValue,
+			1,
+			reqLabels...,
+		)
+		ch <- prometheus.MustNewConstMetric(
+			j.metrics.runCountDesc,
+			prometheus.CounterValue,
+			float64(job.RunCount),
+			jobLabels...,
+		)
+		ch <- prometheus.MustNewConstMetric(
+			j.metrics.startTimeDesc,
+			prometheus.GaugeValue,
+			float64(job.Stime),
+			jobLabels...,
+		)
 		if !job.IsRunning() {
-			ch <- prometheus.MustNewConstMetric(j.metrics.endTimeDesc, prometheus.GaugeValue, float64(job.Mtime), jobLabels...)
+			ch <- prometheus.MustNewConstMetric(
+				j.metrics.endTimeDesc,
+				prometheus.GaugeValue,
+				float64(job.Mtime),
+				jobLabels...,
+			)
 		}
 	}
 }
