@@ -10,8 +10,10 @@ import (
 )
 
 var (
-	hostname       = utils.MustHostname()
-	pbsCgroupPaths = map[string]string{
+	defaultJobLabels  = []string{"jobid", "runcount"}
+	defaultNodeLabels = []string{"node", "vnode"}
+	hostname          = utils.MustHostname()
+	pbsCgroupPaths    = map[string]string{
 		"v1": "pbs_jobs.service/jobid",
 		"v2": "pbs_jobs.service/jobs",
 	}
