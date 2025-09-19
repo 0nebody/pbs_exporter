@@ -7,13 +7,13 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/0nebody/pbs_exporter/internal/pbsjobs"
+	"github.com/0nebody/pbs_exporter/internal/pbsjob"
 	"github.com/0nebody/pbs_exporter/internal/utils"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
 var (
-	jobCache   *pbsjobs.JobCache
+	jobCache   *pbsjob.JobCache
 	pbsJobPath = "mom_priv/jobs"
 )
 
@@ -39,7 +39,7 @@ type JobMetrics struct {
 }
 
 func InitialiseJobCache(pbsHome string, logger *slog.Logger) error {
-	jobCache = pbsjobs.NewJobCache(logger, 60, 15*time.Second)
+	jobCache = pbsjob.NewJobCache(logger, 60, 15*time.Second)
 
 	jobPath := filepath.Join(pbsHome, pbsJobPath)
 	if !utils.DirectoryExists(jobPath) {
@@ -47,7 +47,7 @@ func InitialiseJobCache(pbsHome string, logger *slog.Logger) error {
 	}
 
 	// parse all existing job files
-	jobFiles, err := pbsjobs.ParseJobFiles(jobPath, logger)
+	jobFiles, err := pbsjob.ParseJobFiles(jobPath, logger)
 	if err != nil {
 		return fmt.Errorf("failed to parse job files: %w", err)
 	}
@@ -67,13 +67,13 @@ func WatchPbsJobs(pbsHome string, logger *slog.Logger) error {
 		return fmt.Errorf("PBS job directory does not exist: %s", watchPath)
 	}
 
-	watcher, err := pbsjobs.NewJobWatcher(watchPath)
+	watcher, err := pbsjob.NewJobWatcher(watchPath)
 	if err != nil {
 		return fmt.Errorf("failed creating job watcher: %w", err)
 	}
 	defer watcher.Close()
 
-	if err := pbsjobs.PbsJobEvent(watcher, logger, jobCache); err != nil {
+	if err := pbsjob.PbsJobEvent(watcher, logger, jobCache); err != nil {
 		return fmt.Errorf("failed to watch PBS jobs: %w", err)
 	}
 

@@ -1,4 +1,4 @@
-package pbsjobs
+package pbsjob
 
 import (
 	"log/slog"

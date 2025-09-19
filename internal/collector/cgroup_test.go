@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/0nebody/pbs_exporter/internal/pbsjobs"
+	"github.com/0nebody/pbs_exporter/internal/pbsjob"
 	"github.com/0nebody/pbs_exporter/internal/utils"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/testutil"
@@ -74,7 +74,7 @@ func TestCollectCgroups(t *testing.T) {
 	t.Run("CollectNoJobID", func(t *testing.T) {
 		config.EnableJobCollector = true
 		cgroupCollector := NewCgroupCollector(config)
-		jobCache = pbsjobs.NewJobCache(cgroupCollector.logger, 60, 15*time.Second)
+		jobCache = pbsjob.NewJobCache(cgroupCollector.logger, 60, 15*time.Second)
 		registry := prometheus.NewRegistry()
 		registry.MustRegister(cgroupCollector)
 
