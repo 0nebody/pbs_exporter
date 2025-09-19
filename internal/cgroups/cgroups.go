@@ -19,6 +19,8 @@ import (
 
 var (
 	ErrCgroupUninitialised = errors.New("cgroup uninitialised")
+	microsecPerSecond      = 1000000.0
+	nanosecPerSecond       = 1000000000.0
 )
 
 type CgroupManager interface {
@@ -235,9 +237,9 @@ func (c *CgroupV1) Stat() (*Metrics, error) {
 	if slices.Contains(metrics.Controllers, "cpu") {
 		statCPU := stat.GetCPU()
 		statCPUUsage := statCPU.GetUsage()
-		metrics.Cpu.System = float64(statCPUUsage.GetKernel()) / 1000000000.0
-		metrics.Cpu.Usage = float64(statCPUUsage.GetTotal()) / 1000000000.0
-		metrics.Cpu.User = float64(statCPUUsage.GetUser()) / 1000000000.0
+		metrics.Cpu.System = float64(statCPUUsage.GetKernel()) / nanosecPerSecond
+		metrics.Cpu.Usage = float64(statCPUUsage.GetTotal()) / nanosecPerSecond
+		metrics.Cpu.User = float64(statCPUUsage.GetUser()) / nanosecPerSecond
 	}
 
 	if slices.Contains(metrics.Controllers, "cpuset") {
@@ -329,9 +331,9 @@ func (c *CgroupV2) Stat() (*Metrics, error) {
 
 	if slices.Contains(metrics.Controllers, "cpu") {
 		statCPU := stat.GetCPU()
-		metrics.Cpu.System = float64(statCPU.GetSystemUsec()) / 1000000.0
-		metrics.Cpu.Usage = float64(statCPU.GetUsageUsec()) / 1000000.0
-		metrics.Cpu.User = float64(statCPU.GetUserUsec()) / 1000000.0
+		metrics.Cpu.System = float64(statCPU.GetSystemUsec()) / microsecPerSecond
+		metrics.Cpu.Usage = float64(statCPU.GetUsageUsec()) / microsecPerSecond
+		metrics.Cpu.User = float64(statCPU.GetUserUsec()) / microsecPerSecond
 	}
 
 	if slices.Contains(metrics.Controllers, "cpuset") {
