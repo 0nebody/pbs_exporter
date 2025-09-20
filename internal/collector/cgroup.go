@@ -115,7 +115,7 @@ func NewCgroupCollector(config CollectorConfig) *CgroupCollector {
 		),
 		memActiveAnonDesc: prometheus.NewDesc(
 			"pbs_cgroup_mem_active_anon_bytes",
-			"Amount of anonymouns and swap cache memory on active LRU list.",
+			"Amount of anonymous and swap cache memory on active LRU list.",
 			defaultJobLabels,
 			nil,
 		),
@@ -133,7 +133,7 @@ func NewCgroupCollector(config CollectorConfig) *CgroupCollector {
 		),
 		memInactiveAnonDesc: prometheus.NewDesc(
 			"pbs_cgroup_mem_inactive_anon_bytes",
-			"Amount of anonymouns and swap cache memory on inactive LRU list.",
+			"Amount of anonymous and swap cache memory on inactive LRU list.",
 			defaultJobLabels,
 			nil,
 		),
@@ -169,7 +169,7 @@ func NewCgroupCollector(config CollectorConfig) *CgroupCollector {
 		),
 		memShmemDesc: prometheus.NewDesc(
 			"pbs_cgroup_mem_shmem_bytes",
-			"Amount of cached filstem data that is swap-backed used by tasks in the cgroup.",
+			"Amount of cached filesystem data that is swap-backed used by tasks in the cgroup.",
 			defaultJobLabels,
 			nil,
 		),
