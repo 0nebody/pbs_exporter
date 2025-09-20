@@ -2,7 +2,6 @@ package collector
 
 import (
 	"log/slog"
-	"regexp"
 
 	"github.com/0nebody/pbs_exporter/internal/cgroups"
 	"github.com/0nebody/pbs_exporter/internal/utils"
@@ -10,12 +9,13 @@ import (
 )
 
 var (
-	hostname       = utils.MustHostname()
-	pbsCgroupPaths = map[string]string{
+	defaultJobLabels  = []string{"jobid", "runcount"}
+	defaultNodeLabels = []string{"node", "vnode"}
+	hostname          = utils.MustHostname()
+	pbsCgroupPaths    = map[string]string{
 		"v1": "pbs_jobs.service/jobid",
 		"v2": "pbs_jobs.service/jobs",
 	}
-	pbsVnodeRegexp = regexp.MustCompile(`[a-zA-Z0-9_.-]+\[(\d)\]`)
 )
 
 type Collectors struct {

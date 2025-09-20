@@ -25,13 +25,13 @@ func NewProcCollector(config CollectorConfig) *ProcCollector {
 		cgroupIoReadDesc: prometheus.NewDesc(
 			"pbs_cgroup_io_read_bytes_total",
 			"Total bytes read by the cgroup",
-			[]string{"jobid", "runcount"},
+			defaultJobLabels,
 			nil,
 		),
 		cgroupIoWriteDesc: prometheus.NewDesc(
 			"pbs_cgroup_io_write_bytes_total",
 			"Total bytes written by the cgroup",
-			[]string{"jobid", "runcount"},
+			defaultJobLabels,
 			nil,
 		),
 	}
@@ -57,8 +57,20 @@ func (p *ProcCollector) CollectForCgroup(ch chan<- prometheus.Metric, cgroupPath
 		return
 	}
 
-	ch <- prometheus.MustNewConstMetric(p.metrics.cgroupIoReadDesc, prometheus.CounterValue, float64(ioRead), jobId, jobRunCount)
-	ch <- prometheus.MustNewConstMetric(p.metrics.cgroupIoWriteDesc, prometheus.CounterValue, float64(ioWrite), jobId, jobRunCount)
+	jobLabels := []string{jobId, jobRunCount}
+
+	ch <- prometheus.MustNewConstMetric(
+		p.metrics.cgroupIoReadDesc,
+		prometheus.CounterValue,
+		float64(ioRead),
+		jobLabels...,
+	)
+	ch <- prometheus.MustNewConstMetric(
+		p.metrics.cgroupIoWriteDesc,
+		prometheus.CounterValue,
+		float64(ioWrite),
+		jobLabels...,
+	)
 }
 
 func GetCgroupIo(procRoot string, pids []uint64, logger *slog.Logger) (uint64, uint64, error) {

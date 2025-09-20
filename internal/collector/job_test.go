@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/0nebody/pbs_exporter/internal/pbsjobs"
+	"github.com/0nebody/pbs_exporter/internal/pbsjob"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/testutil"
 )
@@ -43,8 +43,8 @@ func TestDescribeJobs(t *testing.T) {
 func TestCollectJobs(t *testing.T) {
 	hostname = "cpu1n001"
 	jobCollector := NewJobCollector(configEnabled)
-	jobCache = pbsjobs.NewJobCache(jobCollector.logger, 60, 15*time.Second)
-	jobCache.Set("1000", &pbsjobs.Job{
+	jobCache = pbsjob.NewJobCache(jobCollector.logger, 60, 15*time.Second)
+	jobCache.Set("1000", &pbsjob.Job{
 		ExecHost:    "cpu1n001",
 		JobName:     "test",
 		JobOwner:    "test",
@@ -53,7 +53,7 @@ func TestCollectJobs(t *testing.T) {
 		Queue:       "batch",
 		Interactive: 1,
 		Mtime:       time.Now().Unix(),
-		ResourceList: pbsjobs.ResourceList{
+		ResourceList: pbsjob.ResourceList{
 			Walltime: "00:00:01",
 			Mem:      34359738368,
 			Ncpus:    1,
