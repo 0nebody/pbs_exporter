@@ -2,7 +2,6 @@ package collector
 
 import (
 	"log/slog"
-	"regexp"
 
 	"github.com/0nebody/pbs_exporter/internal/cgroups"
 	"github.com/0nebody/pbs_exporter/internal/utils"
@@ -17,7 +16,6 @@ var (
 		"v1": "pbs_jobs.service/jobid",
 		"v2": "pbs_jobs.service/jobs",
 	}
-	pbsVnodeRegexp = regexp.MustCompile(`[a-zA-Z0-9_.-]+\[(\d)\]`)
 )
 
 type Collectors struct {
