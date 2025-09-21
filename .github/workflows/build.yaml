@@ -49,3 +49,4 @@ jobs:
           files: |
             ./pbs_exporter
             ./dashboards.tar.gz
+          generate_release_notes: true
