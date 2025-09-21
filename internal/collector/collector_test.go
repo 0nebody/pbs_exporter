@@ -40,7 +40,6 @@ var configEnabled = CollectorConfig{
 	EnableCgroupCollector: true,
 	EnableJobCollector:    true,
 	EnableNodeCollector:   true,
-	EnableProcCollector:   true,
 }
 
 var configDisabled = CollectorConfig{
@@ -48,7 +47,6 @@ var configDisabled = CollectorConfig{
 	EnableCgroupCollector: false,
 	EnableJobCollector:    false,
 	EnableNodeCollector:   false,
-	EnableProcCollector:   false,
 }
 
 func TestNewCollectors(t *testing.T) {
@@ -90,7 +88,6 @@ func TestDescribe(t *testing.T) {
 		want := reflect.TypeOf(*collectors.cgroupCollector.metrics).NumField()
 		want += reflect.TypeOf(*collectors.jobCollector.metrics).NumField()
 		want += reflect.TypeOf(*collectors.nodeCollector.metrics).NumField()
-		want += reflect.TypeOf(*collectors.procCollector.metrics).NumField()
 
 		for desc := range ch {
 			got++

@@ -128,11 +128,6 @@ g.dashboard.new('PBS Job')
                 'Total memory page faults of cgroup',
                 [queries.cgroupMemoryPgFault, queries.cgroupMemoryPgMajFault]
               ),
-              panels.timeseries.bytes(
-                'Disk IO',
-                'Total disk IO of cgroup',
-                [queries.cgroupIoRead, queries.cgroupIoWrite]
-              ),
               panels.timeseries.base(
                 'Processes',
                 'Number of processes in cgroup by node',

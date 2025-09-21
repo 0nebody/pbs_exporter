@@ -23,7 +23,6 @@ var (
 	listenAddress          = kingpin.Flag("web.listen-address", "Address to listen on for web interface and telemetry.").Default(":9307").String()
 	nodeCollectorEnabled   = kingpin.Flag("node.enabled", "Enable node collector.").Default("false").Bool()
 	pbsHome                = kingpin.Flag("job.pbs_home", "PBS home directory").Default("/var/spool/pbs").String()
-	procCollectorEnabled   = kingpin.Flag("proc.enabled", "Enable proc collector.").Default("true").Bool()
 )
 
 func redirectToMetrics(w http.ResponseWriter, r *http.Request) {
@@ -61,7 +60,6 @@ func main() {
 	collectorConfig.EnableCgroupCollector = *cgroupCollectorEnabled
 	collectorConfig.EnableJobCollector = *jobCollectorEnabled
 	collectorConfig.EnableNodeCollector = *nodeCollectorEnabled
-	collectorConfig.EnableProcCollector = *procCollectorEnabled
 	logger.Info("Using cgroup", "version", collectorConfig.CgroupVersion, "path", filepath.Join(collectorConfig.CgroupRoot, collectorConfig.CgroupPath))
 
 	// ensure required directories exist
