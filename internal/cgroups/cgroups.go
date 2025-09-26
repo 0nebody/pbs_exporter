@@ -31,58 +31,61 @@ type Cgroup interface {
 type Metrics struct {
 	Path        string
 	Controllers []string
-
-	Cpu     CPU
-	Hugetlb []Hugetlb
-	Io      []IO
-	Memory  Memory
-	Tasks   Tasks
+	Io          IO
+	Cpu         CPU
+	Hugetlb     []Hugetlb
+	Memory      Memory
+	Tasks       Tasks
 }
 
 type CPU struct {
 	Count  int
-	System float64
-	Usage  float64
-	User   float64
+	System uint64
+	Usage  uint64
+	User   uint64
 }
 
 type Hugetlb struct {
-	Max      float64
+	Max      uint64
 	Pagesize string
-	Usage    float64
+	Usage    uint64
 }
 
 type IO struct {
+	Usage []IoUsage
+}
+
+type IoUsage struct {
 	Major  uint64
-	Rbytes float64
-	Rios   float64
-	Wbytes float64
-	Wios   float64
+	Rbytes uint64
+	Rios   uint64
+	Wbytes uint64
+	Wios   uint64
 }
 
 type Memory struct {
-	ActiveAnon   float64
-	ActiveFile   float64
-	FileMapped   float64
-	InactiveAnon float64
-	InactiveFile float64
-	Limit        float64
-	Pgfault      float64
-	Pgmajfault   float64
-	Rss          float64
-	Shmem        float64
-	SwapLimit    float64
-	SwapUsage    float64
-	Usage        float64
-	Wss          float64
+	ActiveAnon   uint64
+	ActiveFile   uint64
+	FileMapped   uint64
+	InactiveAnon uint64
+	InactiveFile uint64
+	Limit        uint64
+	Pgfault      uint64
+	Pgmajfault   uint64
+	Rss          uint64
+	Shmem        uint64
+	SwapLimit    uint64
+	SwapUsage    uint64
+	Usage        uint64
+	Wss          uint64
 }
 
 type Tasks struct {
-	PidLimit    float64
-	PidUsage    float64
+	PidLimit    uint64
+	PidUsage    uint64
 	Pids        []uint64
-	ThreadLimit float64
-	ThreadUsage float64
+	ThreadLimit uint64
+	ThreadUsage uint64
 	Threads     []uint64
 }
 

@@ -11,7 +11,7 @@ import (
 )
 
 var (
-	nanosecPerSecond = 1000000000.0
+	nanosecPerSecond = uint64(1000000000)
 )
 
 type CgroupV1Api interface {
@@ -74,10 +74,10 @@ func (c *CgroupV1) Stat() (*Metrics, error) {
 
 	if slices.Contains(metrics.Controllers, "blkio") {
 		statIO := stat.GetBlkio()
-		ioMap := make(map[uint64]*IO)
-		ioMapGet := func(major uint64) *IO {
+		ioMap := make(map[uint64]*IoUsage)
+		ioMapGet := func(major uint64) *IoUsage {
 			if _, ok := ioMap[major]; !ok {
-				ioMap[major] = &IO{Major: major}
+				ioMap[major] = &IoUsage{Major: major}
 			}
 			return ioMap[major]
 		}
@@ -86,9 +86,9 @@ func (c *CgroupV1) Stat() (*Metrics, error) {
 			ioStat := ioMapGet(ioUsage.GetMajor())
 			switch operation := ioUsage.GetOp(); operation {
 			case "Read":
-				ioStat.Rbytes += float64(ioUsage.GetValue())
+				ioStat.Rbytes += ioUsage.GetValue()
 			case "Write":
-				ioStat.Wbytes += float64(ioUsage.GetValue())
+				ioStat.Wbytes += ioUsage.GetValue()
 			}
 		}
 
@@ -96,23 +96,23 @@ func (c *CgroupV1) Stat() (*Metrics, error) {
 			ioStat := ioMapGet(ioUsage.GetMajor())
 			switch operation := ioUsage.GetOp(); operation {
 			case "Read":
-				ioStat.Rios += float64(ioUsage.GetValue())
+				ioStat.Rios += ioUsage.GetValue()
 			case "Write":
-				ioStat.Wios += float64(ioUsage.GetValue())
+				ioStat.Wios += ioUsage.GetValue()
 			}
 		}
 
 		for _, ioStat := range ioMap {
-			metrics.Io = append(metrics.Io, *ioStat)
+			metrics.Io.Usage = append(metrics.Io.Usage, *ioStat)
 		}
 	}
 
 	if slices.Contains(metrics.Controllers, "cpu") {
 		statCPU := stat.GetCPU()
 		statCPUUsage := statCPU.GetUsage()
-		metrics.Cpu.System = float64(statCPUUsage.GetKernel()) / nanosecPerSecond
-		metrics.Cpu.Usage = float64(statCPUUsage.GetTotal()) / nanosecPerSecond
-		metrics.Cpu.User = float64(statCPUUsage.GetUser()) / nanosecPerSecond
+		metrics.Cpu.System = statCPUUsage.GetKernel() / nanosecPerSecond
+		metrics.Cpu.Usage = statCPUUsage.GetTotal() / nanosecPerSecond
+		metrics.Cpu.User = statCPUUsage.GetUser() / nanosecPerSecond
 	}
 
 	if slices.Contains(metrics.Controllers, "cpuset") {
@@ -127,9 +127,9 @@ func (c *CgroupV1) Stat() (*Metrics, error) {
 		statHugetlb := stat.GetHugetlb()
 		for _, hugetlb := range statHugetlb {
 			metrics.Hugetlb = append(metrics.Hugetlb, Hugetlb{
-				Max:      float64(hugetlb.GetMax()),
+				Max:      hugetlb.GetMax(),
 				Pagesize: hugetlb.GetPagesize(),
-				Usage:    float64(hugetlb.GetUsage()),
+				Usage:    hugetlb.GetUsage(),
 			})
 		}
 	}
@@ -139,39 +139,39 @@ func (c *CgroupV1) Stat() (*Metrics, error) {
 		statMemoryUsage := statMemory.GetUsage()
 		statMemorySwap := statMemory.GetSwap()
 
-		metrics.Memory.ActiveAnon = float64(statMemory.GetTotalActiveAnon())
-		metrics.Memory.ActiveFile = float64(statMemory.GetTotalActiveFile())
-		metrics.Memory.FileMapped = float64(statMemory.GetTotalRSS() - statMemory.GetTotalActiveAnon() - statMemory.GetTotalInactiveAnon())
-		metrics.Memory.InactiveAnon = float64(statMemory.GetTotalInactiveAnon())
-		metrics.Memory.InactiveFile = float64(statMemory.GetTotalInactiveFile())
-		metrics.Memory.Limit = float64(statMemoryUsage.GetLimit())
-		metrics.Memory.Rss = float64(statMemory.GetTotalRSS())
+		metrics.Memory.ActiveAnon = statMemory.GetTotalActiveAnon()
+		metrics.Memory.ActiveFile = statMemory.GetTotalActiveFile()
+		metrics.Memory.FileMapped = statMemory.GetTotalRSS() - statMemory.GetTotalActiveAnon() - statMemory.GetTotalInactiveAnon()
+		metrics.Memory.InactiveAnon = statMemory.GetTotalInactiveAnon()
+		metrics.Memory.InactiveFile = statMemory.GetTotalInactiveFile()
+		metrics.Memory.Limit = statMemoryUsage.GetLimit()
+		metrics.Memory.Rss = statMemory.GetTotalRSS()
 		// unavailable in cgroups v1
-		metrics.Memory.Shmem = float64(0)
-		metrics.Memory.Usage = float64(statMemoryUsage.GetUsage())
-		metrics.Memory.Wss = float64(statMemoryUsage.GetUsage() - statMemory.GetTotalInactiveFile())
+		metrics.Memory.Shmem = uint64(0)
+		metrics.Memory.Usage = statMemoryUsage.GetUsage()
+		metrics.Memory.Wss = statMemoryUsage.GetUsage() - statMemory.GetTotalInactiveFile()
 
 		if statMemorySwap.GetUsage() >= statMemoryUsage.GetUsage() {
-			metrics.Memory.SwapUsage = float64(statMemorySwap.GetUsage() - statMemoryUsage.GetUsage())
+			metrics.Memory.SwapUsage = statMemorySwap.GetUsage() - statMemoryUsage.GetUsage()
 		}
 		if statMemorySwap.GetLimit() >= statMemoryUsage.GetLimit() {
-			metrics.Memory.SwapLimit = float64(statMemorySwap.GetLimit() - statMemoryUsage.GetLimit())
+			metrics.Memory.SwapLimit = statMemorySwap.GetLimit() - statMemoryUsage.GetLimit()
 		}
 
-		metrics.Memory.Pgfault = float64(statMemory.PgFault)
-		metrics.Memory.Pgmajfault = float64(statMemory.PgMajFault)
+		metrics.Memory.Pgfault = statMemory.PgFault
+		metrics.Memory.Pgmajfault = statMemory.PgMajFault
 
-		if metrics.Memory.Limit >= float64(math.MaxUint64) {
+		if metrics.Memory.Limit == math.MaxUint64 {
 			return nil, ErrCgroupUninitialised
 		}
 	}
 
 	if slices.Contains(metrics.Controllers, "pids") {
 		pids := stat.GetPids()
-		metrics.Tasks.PidLimit = float64(pids.GetLimit())
-		metrics.Tasks.PidUsage = float64(pids.GetCurrent())
+		metrics.Tasks.PidLimit = pids.GetLimit()
+		metrics.Tasks.PidUsage = pids.GetCurrent()
 	} else {
-		metrics.Tasks.PidLimit = float64(0)
+		metrics.Tasks.PidLimit = uint64(0)
 	}
 
 	pids, err := c.Procs()
@@ -179,14 +179,14 @@ func (c *CgroupV1) Stat() (*Metrics, error) {
 		return nil, err
 	}
 	metrics.Tasks.Pids = pids
-	metrics.Tasks.PidUsage = float64(len(pids))
+	metrics.Tasks.PidUsage = uint64(len(pids))
 
 	threads, err := c.Threads()
 	if err != nil {
 		return nil, err
 	}
 	metrics.Tasks.Threads = threads
-	metrics.Tasks.ThreadUsage = float64(len(threads))
+	metrics.Tasks.ThreadUsage = uint64(len(threads))
 
 	return metrics, nil
 }
