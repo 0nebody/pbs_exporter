@@ -16,7 +16,6 @@ type CgroupCollector struct {
 	jobCollectorEnabled bool
 	logger              *slog.Logger
 	metrics             *CgroupMetrics
-	procCollector       *ProcCollector
 }
 
 type CgroupMetrics struct {
@@ -496,10 +495,6 @@ func (c *CgroupCollector) Collect(ch chan<- prometheus.Metric) {
 				hugetlb.Usage,
 				hugetlbLabels...,
 			)
-		}
-
-		if c.procCollector != nil {
-			c.procCollector.CollectForCgroup(ch, metric.Path, metric.Tasks.Pids, jobRunCount)
 		}
 	}
 }

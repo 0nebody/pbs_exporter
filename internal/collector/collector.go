@@ -22,7 +22,6 @@ type Collectors struct {
 	cgroupCollector *CgroupCollector
 	jobCollector    *JobCollector
 	nodeCollector   *NodeCollector
-	procCollector   *ProcCollector
 }
 
 type CollectorConfig struct {
@@ -35,7 +34,6 @@ type CollectorConfig struct {
 	EnableCgroupCollector bool
 	EnableJobCollector    bool
 	EnableNodeCollector   bool
-	EnableProcCollector   bool
 }
 
 func NewCollectorConfig(cgroupRoot string, logger *slog.Logger) CollectorConfig {
@@ -71,12 +69,6 @@ func NewCollectors(config CollectorConfig) *Collectors {
 		config.Logger.Info("PBS Node collector is disabled")
 	}
 
-	if config.EnableProcCollector {
-		collectors.procCollector = NewProcCollector(config)
-	} else {
-		config.Logger.Info("Proc collector is disabled")
-	}
-
 	return collectors
 }
 
@@ -90,13 +82,9 @@ func (m *Collectors) Describe(ch chan<- *prometheus.Desc) {
 	if m.cgroupCollector != nil {
 		m.cgroupCollector.Describe(ch)
 	}
-	if m.procCollector != nil {
-		m.procCollector.Describe(ch)
-	}
 }
 
 func (m *Collectors) Collect(ch chan<- prometheus.Metric) {
-	// Order is important here, as collectors may depend on others.
 	if m.nodeCollector != nil {
 		m.nodeCollector.Collect(ch)
 	}
@@ -104,7 +92,6 @@ func (m *Collectors) Collect(ch chan<- prometheus.Metric) {
 		m.jobCollector.Collect(ch)
 	}
 	if m.cgroupCollector != nil {
-		m.cgroupCollector.procCollector = m.procCollector
 		m.cgroupCollector.Collect(ch)
 	}
 }

@@ -5,7 +5,7 @@ A Prometheus exporter for realtime job monitoring of PBS Professional HPC cluste
 This exporter collects:
  - **Node Metrics:** Cluster-wide node status and attributes from `pbsnodes`.
  - **Job Metrics:** Job submission information for each PBS job.
- - **Cgroup Metrics:** CPU, memory, and I/O usage for each job via cgroups. Supports both V1 and V2.
+ - **Cgroup Metrics:** Realtime CPU and memory usage for each job via cgroups. Supports both V1 and V2.
 
 ## Usage
 
@@ -23,7 +23,6 @@ Flags:
   --web.listen-address=":9307"     Address to listen on for web interface and telemetry.
   --[no-]node.enabled              Enable node collector.
   --job.pbs_home="/var/spool/pbs"  PBS home directory
-  --[no-]proc.enabled              Enable proc collector.
   --log.level=info                 Only log messages with the given severity or above. One of: [debug, info, warn, error]
   --log.format=logfmt              Output format of log messages. One of: [logfmt, json]
   --[no-]version                   Show application version.
@@ -44,7 +43,7 @@ pbs_exporter
 PBS node metrics will be the same from every node and should be collected once or deduplicated. Run the exporter for only node metrics:
 
 ```shell
-pbs_exporter --node.enabled --no-cgroup.enabled --no-job.enabled --no-proc.enabled
+pbs_exporter --node.enabled --no-cgroup.enabled --no-job.enabled
 ```
 
 ## Installation
@@ -85,10 +84,6 @@ An [example Prometheus configuration](misc/prometheus/prometheus.yaml) is availa
 
 ### Privilege Requirements
 
-Access to `/proc` and `$PBS_HOME/mom_priv/jobs` requires elevated privileges. This is required when collecting with flags `--job.enabled` and `--proc.enabled` enabled.
+Access to `$PBS_HOME/mom_priv/jobs` requires elevated privileges. This is required when collecting with `--job.enabled` set to true.
 
-```shell
-msg Unable to get PID IO pid 1234 err open /proc/1234/io: permission denied
-```
-
-Use `setcap 'cap_sys_ptrace=ep cap_dac_read_search=ep' pbs_exporter` to run with minimal elevated privileges.
+Use `setcap 'cap_dac_read_search=ep' pbs_exporter` to run with minimal elevated privileges.

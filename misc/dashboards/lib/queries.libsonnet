@@ -220,34 +220,6 @@ local prometheusQuery = g.query.prometheus;
     + prometheusQuery.withEditorMode('code')
     + prometheusQuery.withLegendFormat('Memory Usage Efficiency'),
 
-  cgroupIoRead:
-    prometheusQuery.new(
-      '$' + variables.datasource.name,
-      |||
-        sum by (jobid) (
-          irate(
-            pbs_cgroup_io_read_bytes_total{instance=~"$node", jobid="$jobid"}[$__rate_interval]
-          )
-        )
-      |||
-    )
-    + prometheusQuery.withEditorMode('code')
-    + prometheusQuery.withLegendFormat('IO Read'),
-
-  cgroupIoWrite:
-    prometheusQuery.new(
-      '$' + variables.datasource.name,
-      |||
-        sum by (jobid) (
-          irate(
-            pbs_cgroup_io_write_bytes_total{instance=~"$node", jobid="$jobid"}[$__rate_interval]
-          )
-        )
-      |||
-    )
-    + prometheusQuery.withEditorMode('code')
-    + prometheusQuery.withLegendFormat('IO Write'),
-
   cgroupProcessCount:
     prometheusQuery.new(
       '$' + variables.datasource.name,
