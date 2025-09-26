@@ -8,7 +8,7 @@ import (
 )
 
 var (
-	microsecPerSecond = 1000000.0
+	microsecPerSecond = uint64(1000000)
 )
 
 type CgroupV2Api interface {
@@ -71,9 +71,9 @@ func (c *CgroupV2) Stat() (*Metrics, error) {
 
 	if slices.Contains(metrics.Controllers, "cpu") {
 		statCPU := stat.GetCPU()
-		metrics.Cpu.System = float64(statCPU.GetSystemUsec()) / microsecPerSecond
-		metrics.Cpu.Usage = float64(statCPU.GetUsageUsec()) / microsecPerSecond
-		metrics.Cpu.User = float64(statCPU.GetUserUsec()) / microsecPerSecond
+		metrics.Cpu.System = statCPU.GetSystemUsec() / microsecPerSecond
+		metrics.Cpu.Usage = statCPU.GetUsageUsec() / microsecPerSecond
+		metrics.Cpu.User = statCPU.GetUserUsec() / microsecPerSecond
 	}
 
 	if slices.Contains(metrics.Controllers, "cpuset") {
@@ -88,9 +88,9 @@ func (c *CgroupV2) Stat() (*Metrics, error) {
 		statHugetlb := stat.GetHugetlb()
 		for _, hugetlb := range statHugetlb {
 			metrics.Hugetlb = append(metrics.Hugetlb, Hugetlb{
-				Max:      float64(hugetlb.GetMax()),
+				Max:      hugetlb.GetMax(),
 				Pagesize: hugetlb.GetPagesize(),
-				Usage:    float64(hugetlb.GetCurrent()),
+				Usage:    hugetlb.GetCurrent(),
 			})
 		}
 	}
@@ -99,12 +99,12 @@ func (c *CgroupV2) Stat() (*Metrics, error) {
 		statIO := stat.GetIo()
 		statIoUsage := statIO.GetUsage()
 		for _, ioUsage := range statIoUsage {
-			metrics.Io = append(metrics.Io, IO{
+			metrics.Io.Usage = append(metrics.Io.Usage, IoUsage{
 				Major:  ioUsage.GetMajor(),
-				Rbytes: float64(ioUsage.GetRbytes()),
-				Rios:   float64(ioUsage.GetRios()),
-				Wbytes: float64(ioUsage.GetWbytes()),
-				Wios:   float64(ioUsage.GetWios()),
+				Rbytes: ioUsage.GetRbytes(),
+				Rios:   ioUsage.GetRios(),
+				Wbytes: ioUsage.GetWbytes(),
+				Wios:   ioUsage.GetWios(),
 			})
 		}
 	}
@@ -112,30 +112,30 @@ func (c *CgroupV2) Stat() (*Metrics, error) {
 	if slices.Contains(metrics.Controllers, "memory") {
 		statMemory := stat.GetMemory()
 
-		metrics.Memory.ActiveAnon = float64(statMemory.GetActiveAnon())
-		metrics.Memory.ActiveFile = float64(statMemory.GetActiveFile())
-		metrics.Memory.FileMapped = float64(statMemory.GetFileMapped())
-		metrics.Memory.InactiveAnon = float64(statMemory.GetInactiveAnon())
-		metrics.Memory.InactiveFile = float64(statMemory.GetInactiveFile())
-		metrics.Memory.Limit = float64(statMemory.GetUsageLimit())
-		metrics.Memory.Rss = float64(statMemory.GetAnon() + statMemory.GetFileMapped())
-		metrics.Memory.Shmem = float64(statMemory.GetShmem())
-		metrics.Memory.Usage = float64(statMemory.GetUsage())
-		metrics.Memory.Wss = float64(statMemory.GetUsage() - statMemory.GetInactiveFile())
+		metrics.Memory.ActiveAnon = statMemory.GetActiveAnon()
+		metrics.Memory.ActiveFile = statMemory.GetActiveFile()
+		metrics.Memory.FileMapped = statMemory.GetFileMapped()
+		metrics.Memory.InactiveAnon = statMemory.GetInactiveAnon()
+		metrics.Memory.InactiveFile = statMemory.GetInactiveFile()
+		metrics.Memory.Limit = statMemory.GetUsageLimit()
+		metrics.Memory.Rss = statMemory.GetAnon() + statMemory.GetFileMapped()
+		metrics.Memory.Shmem = statMemory.GetShmem()
+		metrics.Memory.Usage = statMemory.GetUsage()
+		metrics.Memory.Wss = statMemory.GetUsage() - statMemory.GetInactiveFile()
 
-		metrics.Memory.SwapUsage = float64(statMemory.GetSwapUsage())
-		metrics.Memory.SwapLimit = float64(statMemory.GetSwapLimit())
+		metrics.Memory.SwapUsage = statMemory.GetSwapUsage()
+		metrics.Memory.SwapLimit = statMemory.GetSwapLimit()
 
-		metrics.Memory.Pgfault = float64(statMemory.GetPgfault())
-		metrics.Memory.Pgmajfault = float64(statMemory.GetPgmajfault())
+		metrics.Memory.Pgfault = statMemory.GetPgfault()
+		metrics.Memory.Pgmajfault = statMemory.GetPgmajfault()
 	}
 
 	if slices.Contains(metrics.Controllers, "pids") {
 		pids := stat.GetPids()
-		metrics.Tasks.PidLimit = float64(pids.GetLimit())
-		metrics.Tasks.PidUsage = float64(pids.GetCurrent())
+		metrics.Tasks.PidLimit = pids.GetLimit()
+		metrics.Tasks.PidUsage = pids.GetCurrent()
 	} else {
-		metrics.Tasks.PidLimit = float64(0)
+		metrics.Tasks.PidLimit = uint64(0)
 	}
 
 	pids, err := c.Procs()
@@ -143,14 +143,14 @@ func (c *CgroupV2) Stat() (*Metrics, error) {
 		return nil, err
 	}
 	metrics.Tasks.Pids = pids
-	metrics.Tasks.PidUsage = float64(len(pids))
+	metrics.Tasks.PidUsage = uint64(len(pids))
 
 	threads, err := c.Threads()
 	if err != nil {
 		return nil, err
 	}
 	metrics.Tasks.Threads = threads
-	metrics.Tasks.ThreadUsage = float64(len(threads))
+	metrics.Tasks.ThreadUsage = uint64(len(threads))
 
 	return &metrics, nil
 }
