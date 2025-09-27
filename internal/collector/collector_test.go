@@ -1,6 +1,7 @@
 package collector
 
 import (
+	"context"
 	"log/slog"
 	"os"
 	"reflect"
@@ -15,6 +16,28 @@ var (
 	promDescFqNameRegex = regexp.MustCompile(`fqName: "([^"]+)"`)
 	promDescHelpRegex   = regexp.MustCompile(`help: "([^"]+)"`)
 )
+
+type collectorContext interface {
+	Describe(chan<- *prometheus.Desc)
+	Collect(context.Context, chan<- prometheus.Metric)
+}
+
+type collectContext struct {
+	metric collectorContext
+}
+
+func (c *collectContext) Describe(ch chan<- *prometheus.Desc) {
+	c.metric.Describe(ch)
+}
+
+func (c *collectContext) Collect(ch chan<- prometheus.Metric) {
+	ctx := context.TODO()
+	c.metric.Collect(ctx, ch)
+}
+
+func newCollectorContext(collector collectorContext) *collectContext {
+	return &collectContext{metric: collector}
+}
 
 func promDescFqname(description string) string {
 	matches := promDescFqNameRegex.FindStringSubmatch(description)
@@ -55,7 +78,7 @@ func TestNewCollectors(t *testing.T) {
 		rCollectors := reflect.ValueOf(collectors).Elem()
 
 		for i := 0; i < rCollectors.NumField(); i++ {
-			if rCollectors.Field(i).IsNil() {
+			if rCollectors.Field(i).Kind() == reflect.Pointer && rCollectors.Field(i).IsNil() {
 				fieldName := rCollectors.Type().Field(i).Name
 				t.Errorf("Expected collectors.%s to be set, got nil", fieldName)
 			}
@@ -67,7 +90,7 @@ func TestNewCollectors(t *testing.T) {
 		rCollectors := reflect.ValueOf(collectors).Elem()
 
 		for i := 0; i < rCollectors.NumField(); i++ {
-			if !rCollectors.Field(i).IsNil() {
+			if rCollectors.Field(i).Kind() == reflect.Pointer && !rCollectors.Field(i).IsNil() {
 				fieldName := rCollectors.Type().Field(i).Name
 				t.Errorf("Expected collectors.%s to be nil, got %v", fieldName, rCollectors.Field(i))
 			}

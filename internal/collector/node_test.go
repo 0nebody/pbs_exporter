@@ -1,6 +1,7 @@
 package collector
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -42,7 +43,7 @@ func TestDescribeNodes(t *testing.T) {
 	}
 }
 
-func mockPbsNodes() (*pbsnode.Nodes, error) {
+func mockPbsNodes(ctx context.Context) (*pbsnode.Nodes, error) {
 	nodes := new(pbsnode.Nodes)
 	content, err := os.ReadFile("./testdata/node.json")
 	if err != nil {
@@ -56,7 +57,7 @@ func TestCollectNodes(t *testing.T) {
 	nodeCollector := NewNodeCollector(configEnabled)
 	nodeCollector.pbsNodes = mockPbsNodes
 	registry := prometheus.NewRegistry()
-	registry.MustRegister(nodeCollector)
+	registry.MustRegister(newCollectorContext(nodeCollector))
 
 	got := testutil.CollectAndCount(registry)
 	want := reflect.TypeOf(*nodeCollector.metrics).NumField()

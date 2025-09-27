@@ -49,7 +49,7 @@ func TestCollectCgroups(t *testing.T) {
 	config.CgroupPath = "user.slice"
 	cgroupCollector := NewCgroupCollector(config)
 	registry := prometheus.NewRegistry()
-	registry.MustRegister(cgroupCollector)
+	registry.MustRegister(newCollectorContext(cgroupCollector))
 	utils.PbsJobIdRegex = regexp.MustCompile(`/user.slice/user-(\d+).slice`)
 
 	t.Run("CollectAndCount", func(t *testing.T) {
@@ -76,7 +76,7 @@ func TestCollectCgroups(t *testing.T) {
 		cgroupCollector := NewCgroupCollector(config)
 		jobCache = pbsjob.NewJobCache(cgroupCollector.logger, 60, 15*time.Second)
 		registry := prometheus.NewRegistry()
-		registry.MustRegister(cgroupCollector)
+		registry.MustRegister(newCollectorContext(cgroupCollector))
 
 		got := testutil.CollectAndCount(registry)
 		want := 0

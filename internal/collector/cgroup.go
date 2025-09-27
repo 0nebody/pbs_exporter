@@ -1,6 +1,8 @@
 package collector
 
 import (
+	"context"
+	"golang.org/x/sync/errgroup"
 	"log/slog"
 	"strconv"
 	"sync"
@@ -255,7 +257,8 @@ func (c *CgroupCollector) Describe(ch chan<- *prometheus.Desc) {
 	ch <- c.metrics.threadUsageDesc
 }
 
-func getCgroupStats(root string, path string, logger *slog.Logger) ([]*cgroups.Metrics, error) {
+func getCgroupStats(ctx context.Context, root string, path string, logger *slog.Logger) ([]*cgroups.Metrics, error) {
+	var mu sync.Mutex
 	var cgroupMetrics []*cgroups.Metrics
 
 	manager := cgroups.NewCgroupManager(root)
@@ -265,38 +268,46 @@ func getCgroupStats(root string, path string, logger *slog.Logger) ([]*cgroups.M
 		return nil, err
 	}
 
-	var wg sync.WaitGroup
-	var mu sync.Mutex
-
+	g, _ := errgroup.WithContext(ctx)
+	g.SetLimit(8)
 	for _, cgroupPath := range cgroupPaths {
-		wg.Add(1)
-		go func(cgroupPath string) {
-			defer wg.Done()
+		// collect cgroup stats, continue on failure
+		g.Go(func() error {
+			if ctx.Err() != nil {
+				return ctx.Err()
+			}
 
 			cgroup, err := manager.Load(cgroupPath)
 			if err != nil {
 				logger.Error("Error loading cgroup", "err", err, "cgroupPath", cgroupPath)
-				return
+				return nil
 			}
 
 			metrics, err := cgroup.Stat()
 			if err != nil {
 				logger.Error("Error getting cgroup stats", "err", err, "cgroupPath", cgroupPath)
-				return
+				return nil
 			}
 
 			mu.Lock()
 			cgroupMetrics = append(cgroupMetrics, metrics)
 			mu.Unlock()
-		}(cgroupPath)
+
+			return nil
+		})
 	}
-	wg.Wait()
+
+	if err := g.Wait(); err != nil {
+		logger.Error("Cgroup collection failed", "err", err)
+		return nil, err
+	}
+	logger.Debug("Cgroup collection completed", "cgroups", len(cgroupMetrics))
 
 	return cgroupMetrics, nil
 }
 
-func (c *CgroupCollector) Collect(ch chan<- prometheus.Metric) {
-	metrics, err := getCgroupStats(c.cgroupRoot, c.cgroupPath, c.logger)
+func (c *CgroupCollector) Collect(ctx context.Context, ch chan<- prometheus.Metric) {
+	metrics, err := getCgroupStats(ctx, c.cgroupRoot, c.cgroupPath, c.logger)
 	if err != nil {
 		c.logger.Error("Failed to get cgroup metrics", "err", err)
 		return

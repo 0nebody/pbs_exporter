@@ -1,7 +1,9 @@
 package collector
 
 import (
+	"context"
 	"log/slog"
+	"time"
 
 	"github.com/0nebody/pbs_exporter/internal/cgroups"
 	"github.com/0nebody/pbs_exporter/internal/utils"
@@ -22,6 +24,7 @@ type Collectors struct {
 	cgroupCollector *CgroupCollector
 	jobCollector    *JobCollector
 	nodeCollector   *NodeCollector
+	timeout         time.Duration
 }
 
 type CollectorConfig struct {
@@ -30,6 +33,7 @@ type CollectorConfig struct {
 	CgroupVersion string
 	Logger        *slog.Logger
 	PbsHome       string
+	ScrapeTimeout int
 
 	EnableCgroupCollector bool
 	EnableJobCollector    bool
@@ -49,7 +53,9 @@ func NewCollectorConfig(cgroupRoot string, logger *slog.Logger) CollectorConfig 
 }
 
 func NewCollectors(config CollectorConfig) *Collectors {
-	collectors := &Collectors{}
+	collectors := &Collectors{
+		timeout: time.Duration(config.ScrapeTimeout) * time.Second,
+	}
 
 	if config.EnableCgroupCollector {
 		collectors.cgroupCollector = NewCgroupCollector(config)
@@ -72,26 +78,29 @@ func NewCollectors(config CollectorConfig) *Collectors {
 	return collectors
 }
 
-func (m *Collectors) Describe(ch chan<- *prometheus.Desc) {
-	if m.nodeCollector != nil {
-		m.nodeCollector.Describe(ch)
+func (c *Collectors) Describe(ch chan<- *prometheus.Desc) {
+	if c.nodeCollector != nil {
+		c.nodeCollector.Describe(ch)
 	}
-	if m.jobCollector != nil {
-		m.jobCollector.Describe(ch)
+	if c.jobCollector != nil {
+		c.jobCollector.Describe(ch)
 	}
-	if m.cgroupCollector != nil {
-		m.cgroupCollector.Describe(ch)
+	if c.cgroupCollector != nil {
+		c.cgroupCollector.Describe(ch)
 	}
 }
 
-func (m *Collectors) Collect(ch chan<- prometheus.Metric) {
-	if m.nodeCollector != nil {
-		m.nodeCollector.Collect(ch)
+func (c *Collectors) Collect(ch chan<- prometheus.Metric) {
+	// https://github.com/prometheus/client_golang/issues/1538
+	ctx, cancel := context.WithTimeout(context.TODO(), c.timeout)
+	defer cancel()
+	if c.nodeCollector != nil {
+		c.nodeCollector.Collect(ctx, ch)
 	}
-	if m.jobCollector != nil {
-		m.jobCollector.Collect(ch)
+	if c.jobCollector != nil {
+		c.jobCollector.Collect(ctx, ch)
 	}
-	if m.cgroupCollector != nil {
-		m.cgroupCollector.Collect(ch)
+	if c.cgroupCollector != nil {
+		c.cgroupCollector.Collect(ctx, ch)
 	}
 }

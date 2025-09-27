@@ -22,7 +22,8 @@ Flags:
   --[no-]job.enabled               Enable job collector.
   --web.listen-address=":9307"     Address to listen on for web interface and telemetry.
   --[no-]node.enabled              Enable node collector.
-  --job.pbs_home="/var/spool/pbs"  PBS home directory
+  --job.pbs_home="/var/spool/pbs"  PBS home directory.
+  --scrape.timeout=5               Per-scrape timeout in seconds.
   --log.level=info                 Only log messages with the given severity or above. One of: [debug, info, warn, error]
   --log.format=logfmt              Output format of log messages. One of: [logfmt, json]
   --[no-]version                   Show application version.

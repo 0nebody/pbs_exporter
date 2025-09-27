@@ -10,6 +10,7 @@ require (
 	github.com/fsnotify/fsnotify v1.9.0
 	github.com/prometheus/client_golang v1.23.2
 	github.com/prometheus/common v0.66.1
+	golang.org/x/sync v0.17.0
 )
 
 require (

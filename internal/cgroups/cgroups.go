@@ -2,10 +2,8 @@ package cgroups
 
 import (
 	"errors"
-	"io/fs"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/0nebody/pbs_exporter/internal/utils"
 	"github.com/containerd/cgroups"
@@ -103,33 +101,23 @@ func NewCgroupManager(root string) CgroupManager {
 	}
 }
 
-func listCgroups(cgroupRoot string, cgroupPath string) ([]string, error) {
+func listCgroups(root string, path string) ([]string, error) {
+	cgroupPath := filepath.Join(root, path)
+
+	entries, err := os.ReadDir(cgroupPath)
+	if err != nil {
+		return nil, err
+	}
+
 	var cgroupPaths []string
-
-	walkPath := filepath.Join(cgroupRoot, cgroupPath)
-	maxDepth := strings.Count(walkPath, string(os.PathSeparator)) + 1
-
-	err := filepath.WalkDir(walkPath, func(path string, d os.DirEntry, err error) error {
-		if err != nil {
-			return err
+	for _, d := range entries {
+		if d.IsDir() {
+			relPath := filepath.Join("/", path, d.Name())
+			cgroupPaths = append(cgroupPaths, relPath)
 		}
-		if !d.IsDir() {
-			return nil
-		}
-		if path == walkPath {
-			return nil
-		}
-		if strings.Count(path, string(os.PathSeparator)) > maxDepth {
-			return fs.SkipDir
-		}
+	}
 
-		relPath := strings.TrimPrefix(path, cgroupRoot)
-		cgroupPaths = append(cgroupPaths, relPath)
-
-		return nil
-	})
-
-	return cgroupPaths, err
+	return cgroupPaths, nil
 }
 
 func GetCgroupCPUs(cgroupRoot string, cgroupPath string) ([]int, error) {
