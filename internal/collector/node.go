@@ -1,6 +1,7 @@
 package collector
 
 import (
+	"context"
 	"log/slog"
 
 	"github.com/0nebody/pbs_exporter/internal/pbsnode"
@@ -11,7 +12,7 @@ import (
 type NodeCollector struct {
 	logger   *slog.Logger
 	metrics  *NodeMetrics
-	pbsNodes func() (*pbsnode.Nodes, error)
+	pbsNodes func(ctx context.Context) (*pbsnode.Nodes, error)
 }
 
 type NodeMetrics struct {
@@ -103,8 +104,8 @@ func (n *NodeCollector) Describe(ch chan<- *prometheus.Desc) {
 	ch <- n.metrics.stateDesc
 }
 
-func (n *NodeCollector) Collect(ch chan<- prometheus.Metric) {
-	nodeinfo, err := n.pbsNodes()
+func (n *NodeCollector) Collect(ctx context.Context, ch chan<- prometheus.Metric) {
+	nodeinfo, err := n.pbsNodes(ctx)
 	if err != nil {
 		n.logger.Error("Error collecting node info from pbsnodes", "err", err)
 		return

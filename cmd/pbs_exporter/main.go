@@ -22,7 +22,8 @@ var (
 	jobCollectorEnabled    = kingpin.Flag("job.enabled", "Enable job collector.").Default("true").Bool()
 	listenAddress          = kingpin.Flag("web.listen-address", "Address to listen on for web interface and telemetry.").Default(":9307").String()
 	nodeCollectorEnabled   = kingpin.Flag("node.enabled", "Enable node collector.").Default("false").Bool()
-	pbsHome                = kingpin.Flag("job.pbs_home", "PBS home directory").Default("/var/spool/pbs").String()
+	pbsHome                = kingpin.Flag("job.pbs_home", "PBS home directory.").Default("/var/spool/pbs").String()
+	scrapeTimeout          = kingpin.Flag("scrape.timeout", "Per-scrape timeout in seconds.").Default("5").Int()
 )
 
 func redirectToMetrics(w http.ResponseWriter, r *http.Request) {
@@ -57,6 +58,7 @@ func main() {
 	// Initialize collector configuration
 	collectorConfig := collector.NewCollectorConfig(*cgroupRoot, logger)
 	collectorConfig.PbsHome = *pbsHome
+	collectorConfig.ScrapeTimeout = *scrapeTimeout
 	collectorConfig.EnableCgroupCollector = *cgroupCollectorEnabled
 	collectorConfig.EnableJobCollector = *jobCollectorEnabled
 	collectorConfig.EnableNodeCollector = *nodeCollectorEnabled

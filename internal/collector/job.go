@@ -1,6 +1,7 @@
 package collector
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
 	"path/filepath"
@@ -179,7 +180,7 @@ func (j *JobCollector) Describe(ch chan<- *prometheus.Desc) {
 	ch <- j.metrics.endTimeDesc
 }
 
-func (j *JobCollector) Collect(ch chan<- prometheus.Metric) {
+func (j *JobCollector) Collect(ctx context.Context, ch chan<- prometheus.Metric) {
 	if jobCache == nil {
 		j.logger.Error("Job cache is uninitialised")
 		return

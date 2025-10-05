@@ -69,7 +69,7 @@ func TestCollectJobs(t *testing.T) {
 		Stime:       time.Now().Unix(),
 	})
 	registry := prometheus.NewRegistry()
-	registry.MustRegister(jobCollector)
+	registry.MustRegister(newCollectorContext(jobCollector))
 
 	got := testutil.CollectAndCount(registry)
 	// assume job isn't running

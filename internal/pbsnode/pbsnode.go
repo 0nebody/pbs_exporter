@@ -2,6 +2,7 @@ package pbsnode
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"os/exec"
@@ -208,18 +209,25 @@ func (n Node) IsAvailable() (bool, error) {
 }
 
 type cmdExecutor interface {
-	execute(command []string) (stdout, stderr bytes.Buffer, err error)
+	execute(ctx context.Context, command []string) (stdout, stderr bytes.Buffer, err error)
 }
 
 type shellCmdExecutor struct{}
 
-func (s *shellCmdExecutor) execute(command []string) (bytes.Buffer, bytes.Buffer, error) {
+func (s *shellCmdExecutor) execute(ctx context.Context, command []string) (bytes.Buffer, bytes.Buffer, error) {
 	var stdout, stderr bytes.Buffer
-	cmd := exec.Command(command[0], command[1:]...)
+	cmd := exec.CommandContext(ctx, command[0], command[1:]...)
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
-	err := cmd.Run()
-	return stdout, stderr, err
+
+	if err := cmd.Run(); err != nil {
+		if ctx.Err() == context.DeadlineExceeded {
+			return stdout, stderr, fmt.Errorf("context deadline exceeded: %v", err)
+		}
+		return stdout, stderr, err
+	}
+
+	return stdout, stderr, nil
 }
 
 func pbsNodeCommand(node string) []string {
@@ -238,11 +246,10 @@ func parsePbsNodes(output []byte, nodes *Nodes) error {
 	return nil
 }
 
-func GetPbsNodes() (*Nodes, error) {
+func GetPbsNodes(ctx context.Context) (*Nodes, error) {
 	nodeInfo := new(Nodes)
-
 	command := pbsNodeCommand("")
-	stdout, stderr, err := executor.execute(command)
+	stdout, stderr, err := executor.execute(ctx, command)
 	if err != nil {
 		return nodeInfo, err
 	}

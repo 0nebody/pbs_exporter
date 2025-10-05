@@ -2,12 +2,14 @@ package pbsnode
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"os"
 	"os/exec"
 	"reflect"
 	"testing"
+	"time"
 )
 
 var testNode = Nodes{
@@ -343,20 +345,23 @@ func TestExecute(t *testing.T) {
 		stdout   string
 		stderr   string
 		exitCode int
+		timeout  bool
 	}{
 		{
-			name:     "Echo command",
+			name:     "Echo",
 			command:  []string{"echo", "Hello, World!"},
 			stdout:   "Hello, World!\n",
 			stderr:   "",
 			exitCode: 0,
+			timeout:  false,
 		},
 		{
-			name:     "Sleep command",
-			command:  []string{"sleep", "1"},
+			name:     "Sleep",
+			command:  []string{"sleep", "0.05"},
 			stdout:   "",
 			stderr:   "",
 			exitCode: 0,
+			timeout:  false,
 		},
 		{
 			name:     "Error",
@@ -364,12 +369,26 @@ func TestExecute(t *testing.T) {
 			stdout:   "",
 			stderr:   "cat: not_a_real_file: No such file or directory\n",
 			exitCode: 1,
+			timeout:  false,
+		},
+		{
+			name:     "Timeout",
+			command:  []string{"sleep", "1"},
+			stdout:   "",
+			stderr:   "",
+			exitCode: 1,
+			timeout:  true,
 		},
 	}
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			stdout, stderr, err := executor.execute(test.command)
+			ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+			defer cancel()
+			stdout, stderr, err := executor.execute(ctx, test.command)
+			if !test.timeout && ctx.Err() == context.DeadlineExceeded {
+				t.Errorf("execute() error = %v", err)
+			}
 			if exitError, ok := err.(*exec.ExitError); ok && exitError.ExitCode() != test.exitCode {
 				t.Errorf("execute() error = %v, want exit code %d", err, test.exitCode)
 			}
@@ -452,7 +471,7 @@ type mockCommandExecutor struct {
 	calledWith []string
 }
 
-func (m *mockCommandExecutor) execute(command []string) (bytes.Buffer, bytes.Buffer, error) {
+func (m *mockCommandExecutor) execute(ctx context.Context, command []string) (bytes.Buffer, bytes.Buffer, error) {
 	m.calledWith = command
 	var stdout, stderr bytes.Buffer
 	stdout.WriteString(m.stdoutData)
@@ -475,7 +494,7 @@ func TestGetPbsNodes(t *testing.T) {
 
 	tests := []struct {
 		name      string
-		executor  *mockCommandExecutor
+		executor  cmdExecutor
 		want      *Nodes
 		wantError bool
 	}{
@@ -524,7 +543,7 @@ func TestGetPbsNodes(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(tt *testing.T) {
 			executor = test.executor
-			got, err := GetPbsNodes()
+			got, err := GetPbsNodes(context.Background())
 			if err != nil {
 				if test.wantError {
 					return
