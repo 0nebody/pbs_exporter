@@ -25,6 +25,7 @@ type CgroupMetrics struct {
 	cpuSystemDesc       *prometheus.Desc
 	cpuUsageDesc        *prometheus.Desc
 	cpuUserDesc         *prometheus.Desc
+	hugetlbFailCntDesc  *prometheus.Desc
 	hugetlbMaxDesc      *prometheus.Desc
 	hugetlbUsageDesc    *prometheus.Desc
 	ioRbytesDesc        *prometheus.Desc
@@ -76,6 +77,12 @@ func NewCgroupCollector(config CollectorConfig) *CgroupCollector {
 			"pbs_cgroup_cpu_user_seconds_total",
 			"Total user CPU time in seconds consumed by tasks in the cgroup.",
 			defaultJobLabels,
+			nil,
+		),
+		hugetlbFailCntDesc: prometheus.NewDesc(
+			"pbs_cgroup_hugetlb_failcnt_total",
+			"Total number of hugetlb faults incurred.",
+			hugetlbJobLabels,
 			nil,
 		),
 		hugetlbMaxDesc: prometheus.NewDesc(
@@ -232,6 +239,7 @@ func (c *CgroupCollector) Describe(ch chan<- *prometheus.Desc) {
 	ch <- c.metrics.cpuSystemDesc
 	ch <- c.metrics.cpuUsageDesc
 	ch <- c.metrics.cpuUserDesc
+	ch <- c.metrics.hugetlbFailCntDesc
 	ch <- c.metrics.hugetlbMaxDesc
 	ch <- c.metrics.hugetlbUsageDesc
 	ch <- c.metrics.ioRbytesDesc
@@ -494,6 +502,12 @@ func (c *CgroupCollector) Collect(ctx context.Context, ch chan<- prometheus.Metr
 		)
 		for _, hugetlb := range metric.Hugetlb {
 			hugetlbLabels := append(jobLabels, hugetlb.Pagesize)
+			ch <- prometheus.MustNewConstMetric(
+				c.metrics.hugetlbFailCntDesc,
+				prometheus.CounterValue,
+				float64(hugetlb.FailCnt),
+				hugetlbLabels...,
+			)
 			ch <- prometheus.MustNewConstMetric(
 				c.metrics.hugetlbMaxDesc,
 				prometheus.GaugeValue,
