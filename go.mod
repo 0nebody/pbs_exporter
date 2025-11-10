@@ -4,7 +4,6 @@ go 1.25
 
 require (
 	github.com/alecthomas/kingpin/v2 v2.4.0
-	github.com/containerd/cgroups v1.1.0
 	github.com/containerd/cgroups/v3 v3.1.0
 	github.com/docker/go-units v0.5.0
 	github.com/fsnotify/fsnotify v1.9.0
@@ -21,7 +20,6 @@ require (
 	github.com/containerd/log v0.1.0 // indirect
 	github.com/coreos/go-systemd/v22 v22.6.0 // indirect
 	github.com/godbus/dbus/v5 v5.1.0 // indirect
-	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/kylelemons/godebug v1.1.0 // indirect
 	github.com/moby/sys/userns v0.1.0 // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
