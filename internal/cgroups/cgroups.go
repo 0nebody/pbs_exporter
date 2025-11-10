@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 
 	"github.com/0nebody/pbs_exporter/internal/utils"
-	"github.com/containerd/cgroups"
+	"github.com/containerd/cgroups/v3"
 )
 
 var (
