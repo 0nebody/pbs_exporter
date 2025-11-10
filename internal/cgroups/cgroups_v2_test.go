@@ -68,6 +68,7 @@ func TestStatV2(t *testing.T) {
 			Hugetlb: []*v2.HugeTlbStat{
 				{
 					Current:  2,
+					Failcnt:  2,
 					Max:      2,
 					Pagesize: "2MB",
 				},

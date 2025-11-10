@@ -127,6 +127,7 @@ func (c *CgroupV1) Stat() (*Metrics, error) {
 		statHugetlb := stat.GetHugetlb()
 		for _, hugetlb := range statHugetlb {
 			metrics.Hugetlb = append(metrics.Hugetlb, Hugetlb{
+				FailCnt:  hugetlb.GetFailcnt(),
 				Max:      hugetlb.GetMax(),
 				Pagesize: hugetlb.GetPagesize(),
 				Usage:    hugetlb.GetUsage(),

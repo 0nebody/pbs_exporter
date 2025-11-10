@@ -44,6 +44,7 @@ type CPU struct {
 }
 
 type Hugetlb struct {
+	FailCnt  uint64
 	Max      uint64
 	Pagesize string
 	Usage    uint64

@@ -17,6 +17,7 @@ var testMetric = &Metrics{
 	},
 	Hugetlb: []Hugetlb{
 		{
+			FailCnt:  2,
 			Max:      2,
 			Pagesize: "2MB",
 			Usage:    2,

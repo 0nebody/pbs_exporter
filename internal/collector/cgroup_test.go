@@ -55,7 +55,7 @@ func TestCollectCgroups(t *testing.T) {
 	t.Run("CollectAndCount", func(t *testing.T) {
 		got := testutil.CollectAndCount(registry)
 		// assumes io and hugetlb disabled in test environment
-		want := reflect.TypeOf(*cgroupCollector.metrics).NumField() - 6
+		want := reflect.TypeOf(*cgroupCollector.metrics).NumField() - 7
 		if got < want {
 			t.Errorf("CollectAndCount() = %d, want %d", got, want)
 		}
