@@ -17,6 +17,7 @@
 	"JobState": "R",
 	"Queue": "default",
 	"Server": "pbs",
+	"Devices": "",
 	"AccountName": "",
 	"Checkpoint": "",
 	"ErrorPath": "pbs.hpc.local:/home/user/test-job.e1000.1",

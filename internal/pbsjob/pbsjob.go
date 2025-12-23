@@ -49,6 +49,7 @@ type Job struct {
 	JobState      string        `pbs:"job_state"`
 	Queue         string        `pbs:"queue"`
 	Server        string        `pbs:"server"`
+	Devices       string        `pbs:"devices"`
 	AccountName   string        `pbs:"Account_Name"`
 	Checkpoint    string        `pbs:"Checkpoint"`
 	ErrorPath     string        `pbs:"Error_Path"`
