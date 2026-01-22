@@ -108,23 +108,44 @@ func (j *Job) JobUid() (string, error) {
 }
 
 func (j *Job) Ngpus() (int, error) {
-	// ngpus is introduced in PBS 2025
+	// ngpus was introduced in PBS 2025
 	if j.ResourceList.Ngpus != 0 {
 		return j.ResourceList.Ngpus, nil
 	}
 
-	for selectItem := range strings.SplitSeq(j.SchedSelect, ":") {
-		if strings.HasPrefix(selectItem, "ngpus=") {
-			ngpus := strings.Split(selectItem, "=")[1]
-			ngpusInt, err := strconv.Atoi(ngpus)
-			if err != nil {
-				return 0, err
+	ngpus, err := j.ParseSelect("ngpus")
+	if err != nil {
+		return 0, err
+	}
+
+	return int(ngpus), nil
+}
+
+func (j *Job) ParseSelect(resource string) (int64, error) {
+	var total int64 = 0
+	var nchunks int64 = 0
+
+	for chunk := range strings.SplitSeq(j.SchedSelect, "+") {
+		selectNodes, selectResources, found := strings.Cut(chunk, ":")
+		if found {
+			if nodeCount, err := strconv.ParseInt(selectNodes, 10, 64); err == nil {
+				nchunks = nodeCount
 			}
-			return ngpusInt, nil
+		}
+
+		for selectResource := range strings.SplitSeq(selectResources, ":") {
+			resourceKey, resourceValue, found := strings.Cut(selectResource, "=")
+			if found && resourceKey == resource {
+				if value, err := utils.ParseBytes(resourceValue); err == nil {
+					total += value * nchunks
+				} else {
+					return 0, fmt.Errorf("parsing select %s for resource %s: %w", j.SchedSelect, resource, err)
+				}
+			}
 		}
 	}
 
-	return 0, nil
+	return total, nil
 }
 
 func (j *Job) RequestedWalltime() int64 {

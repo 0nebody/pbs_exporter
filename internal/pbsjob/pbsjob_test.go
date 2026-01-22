@@ -106,6 +106,41 @@ func TestNgpusResource(t *testing.T) {
 	}
 }
 
+func TestParseSelect(t *testing.T) {
+	job := &Job{}
+	tests := []struct {
+		name        string
+		schedSelect string
+		resource    string
+		want        int
+	}{
+		{"Empty", "", "", 0},
+		{"NoResource", "1:ncpus=4:mem=32gb:nfpgas=0", "", 0},
+		{"ResourceNgpus", "1:ncpus=4:ngpus=1:mem=32gb:nfpgas=0", "ngpus", 1},
+		{"MultiNodeResourceNgpus", "8:ncpus=4:ngpus=1:mem=32gb:nfpgas=0", "ngpus", 8},
+		{"MultiSelectResourceNgpus", "1:ncpus=4:ngpus=1:mem=32gb:nfpgas=0+2:ncpus=3:ngpus=2:mem=64gb:nfpgas=0", "ngpus", 5},
+		{"ResourceNcpus", "1:ncpus=4:ngpus=1:mem=32gb:nfpgas=0", "ncpus", 4},
+		{"MultiNodeResourceNcpus", "8:ncpus=4:ngpus=1:mem=32gb:nfpgas=0", "ncpus", 32},
+		{"MultiSelectResourceNcpus", "1:ncpus=4:ngpus=1:mem=32gb:nfpgas=0+2:ncpus=3:ngpus=2:mem=64gb:nfpgas=0", "ncpus", 10},
+		{"ResourceMem", "1:ncpus=4:ngpus=1:mem=32gb:nfpgas=0", "mem", 34359738368},
+		{"MultiNodeResourceMem", "8:ncpus=4:ngpus=1:mem=32gb:nfpgas=0", "mem", 274877906944},
+		{"MultiSelectResourceMem", "1:ncpus=4:ngpus=1:mem=32gb:nfpgas=0+2:ncpus=3:ngpus=2:mem=64gb:nfpgas=0", "mem", 171798691840},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			job.SchedSelect = test.schedSelect
+			got, err := job.ParseSelect(test.resource)
+			if err != nil {
+				t.Fatalf("ParseSelect() returned error: %v", err)
+			}
+			if int(got) != test.want {
+				t.Errorf("ParseSelect() = %v, want %v", got, test.want)
+			}
+		})
+	}
+}
+
 func TestRequestedWalltime(t *testing.T) {
 	job := &Job{}
 	tests := []struct {

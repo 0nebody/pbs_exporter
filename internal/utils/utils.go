@@ -7,6 +7,8 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+
+	"github.com/docker/go-units"
 )
 
 var (
@@ -48,6 +50,18 @@ func MustHostname() string {
 	}
 
 	return h
+}
+
+// Returns int64 value of the bytes in a string handling human readable units
+// such as 1K 234M 2G etc.
+func ParseBytes(value string) (int64, error) {
+	if result, err := strconv.ParseInt(value, 10, 64); err == nil {
+		return result, nil
+	} else if result, err := units.RAMInBytes(value); err == nil {
+		return result, nil
+	} else {
+		return 0, fmt.Errorf("parsing value %s to int: %w", value, err)
+	}
 }
 
 // The List Format for cpus and mems is a comma-separated list of CPU
