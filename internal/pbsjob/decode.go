@@ -10,7 +10,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/docker/go-units"
+	"github.com/0nebody/pbs_exporter/internal/utils"
 )
 
 type ErrUnknownJobAttribute struct {
@@ -73,9 +73,7 @@ func (dec *Decoder) parseAttributeValue(value string, attr reflect.Value, separa
 			attr.SetInt(0)
 			return nil
 		}
-		if intValue, err := strconv.ParseInt(value, 10, 64); err == nil {
-			attr.SetInt(intValue)
-		} else if intValue, err := units.RAMInBytes(value); err == nil {
+		if intValue, err := utils.ParseBytes(value); err == nil {
 			attr.SetInt(intValue)
 		} else {
 			return fmt.Errorf("parsing int job attribute '%v': %w", value, err)

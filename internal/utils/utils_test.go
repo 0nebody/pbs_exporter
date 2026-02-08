@@ -58,6 +58,25 @@ func TestMustHostname(t *testing.T) {
 	}
 }
 
+func TestParseBytes(t *testing.T) {
+	tests := []struct {
+		value string
+		want  int64
+	}{
+		{"", 0},
+		{"1024", 1024},
+		{"1k", 1024},
+		{"1GiB", 1073741824},
+	}
+
+	for _, test := range tests {
+		got, _ := ParseBytes(test.value)
+		if got != test.want {
+			t.Errorf("ParseHumanInt(%s) = %v, want %v", test.value, got, test.want)
+		}
+	}
+}
+
 func TestParseListFormat(t *testing.T) {
 	tests := []struct {
 		listFormat string
