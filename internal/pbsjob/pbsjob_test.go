@@ -106,6 +106,72 @@ func TestNgpusResource(t *testing.T) {
 	}
 }
 
+func TestParseExecVnode(t *testing.T) {
+	job := &Job{}
+
+	tests := []struct {
+		name      string
+		execVnode string
+		want      map[Vnode]ExecVnode
+	}{
+		{
+			"Single",
+			"(gpu1n006[0]:ncpus=8:mem=50331648kb:ngpus=1:nfpgas=0)",
+			map[Vnode]ExecVnode{
+				{Node: "gpu1n006", Vnode: "0"}: {
+					Mem:    51539607552,
+					Ncpus:  8,
+					Ngpus:  1,
+					Nfpgas: 0,
+				},
+			},
+		},
+		{
+			"Multiple",
+			"(cpu1n002[0]:ncpus=1:mem=1048576kb:ngpus=0:nfpgas=0)+(cpu1n002[0]:ncpus=1:mem=1048576kb:ngpus=0:nfpgas=0)",
+			map[Vnode]ExecVnode{
+				{Node: "cpu1n002", Vnode: "0"}: {
+					Mem:    2147483648,
+					Ncpus:  2,
+					Ngpus:  0,
+					Nfpgas: 0,
+				},
+			},
+		},
+		{
+			"Multiple Unique",
+			"(cpu1n002[1]:ncpus=1:mem=1048576kb:ngpus=0:nfpgas=0)+(cpu1n003[1]:ncpus=1:mem=1048576kb:ngpus=0:nfpgas=0)",
+			map[Vnode]ExecVnode{
+				{Node: "cpu1n002", Vnode: "1"}: {
+					Mem:    1073741824,
+					Ncpus:  1,
+					Ngpus:  0,
+					Nfpgas: 0,
+				},
+				{Node: "cpu1n003", Vnode: "1"}: {
+					Mem:    1073741824,
+					Ncpus:  1,
+					Ngpus:  0,
+					Nfpgas: 0,
+				},
+			},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			job.ExecVnode = test.execVnode
+			got, err := job.ParseExecVnode()
+			if err != nil {
+				t.Fatalf("ParseExecVnode() returned error: %v", err)
+			}
+			if !reflect.DeepEqual(got, test.want) {
+				t.Errorf("ParseExecVnode() = %v, want %v", got, test.want)
+			}
+		})
+	}
+}
+
 func TestParseSelect(t *testing.T) {
 	job := &Job{}
 	tests := []struct {
