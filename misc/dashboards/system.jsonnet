@@ -70,18 +70,30 @@ g.dashboard.new('PBS System')
             panels.timeseries.base(
               'CPU Requests',
               'Total CPU cores requested by jobs',
-              [queries.systemCpuCoresAvailable, queries.systemCpuCoresRequested]
+              [
+                queries.systemCpuCoresAvailable,
+                queries.systemCpuCoresRequested,
+                queries.systemCpuCoresAllocated
+              ]
             ),
             panels.timeseries.bytes(
               'Memory Requests',
               'Total memory requested by jobs',
-              [queries.systemMemoryAvailable, queries.systemMemoryRequested]
+              [
+                queries.systemMemoryAvailable,
+                queries.systemMemoryRequested,
+                queries.systemMemoryAllocated
+              ]
             ),
             if config.pbs.gpus then
               panels.timeseries.base(
                 'GPU Requests',
                 'Total GPUs requested by jobs',
-                [queries.systemGpusAvailable, queries.systemGpusRequested]
+                [
+                  queries.systemGpusAvailable,
+                  queries.systemGpusRequested,
+                  queries.systemGpusAllocated
+                ]
               ),
           ]), panelWidth=8, panelHeight=10
         ),

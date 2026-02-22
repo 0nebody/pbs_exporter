@@ -18,8 +18,20 @@ import (
 )
 
 var (
-	pbsVnodeRegexp = regexp.MustCompile(`[a-zA-Z0-9_.-]+\[(\d+)\]`)
+	pbsVnodeRegexp = regexp.MustCompile(`([a-zA-Z0-9_.-]+)\[(\d+)\]`)
 )
+
+type Vnode struct {
+	Node  string
+	Vnode string
+}
+
+type ExecVnode struct {
+	Mem    int64 `pbs:"mem"`
+	Ncpus  int64 `pbs:"ncpus"`
+	Nfpgas int64 `pbs:"nfpgas"`
+	Ngpus  int64 `pbs:"ngpus"`
+}
 
 // ResourcesUsed.Cpus can be json '{"host.domain": "1"}' or comma separated list '1,2,3,4'
 // TODO: set ResourcesUsed.Cpus to int once PBS fixes issues with returning json.
@@ -121,6 +133,47 @@ func (j *Job) Ngpus() (int, error) {
 	return int(ngpus), nil
 }
 
+// Each Vnode in an ExecVnode is separated by "+" and wrapped in brackets.
+// Each resource in the vnode is seperated by ":".
+// single vnode:    (nodename[vnode_index]:ncpus=4:ngpus=2:mem=92gb:nfgpas=0)
+// multiple vnodes: (nodename[vnode_index]:ncpus=4:mem=92gb)+(nodename2[vnode_index]:ncpus=4:mem=92gb)
+func (j *Job) ParseExecVnode() (map[Vnode]ExecVnode, error) {
+	execVnodes := make(map[Vnode]ExecVnode)
+
+	for execVnodeEntry := range strings.SplitSeq(j.ExecVnode, "+") {
+		vnodeResources := make(map[string]int64)
+
+		execVnodeEntry, _ = strings.CutPrefix(execVnodeEntry, "(")
+		execVnodeEntry, _ = strings.CutSuffix(execVnodeEntry, ")")
+		hostVnode, resources, _ := strings.Cut(execVnodeEntry, ":")
+
+		vnodeMatch := pbsVnodeRegexp.FindStringSubmatch(hostVnode)
+		if len(vnodeMatch) < 3 {
+			return nil, fmt.Errorf("unable to parse vnode from execVnode")
+		}
+
+		for resValue := range strings.SplitSeq(resources, ":") {
+			resource, value, _ := strings.Cut(resValue, "=")
+			if intValue, err := utils.ParseBytes(value); err == nil {
+				vnodeResources[resource] = intValue
+			}
+		}
+
+		vnode := Vnode{
+			Node:  vnodeMatch[1],
+			Vnode: vnodeMatch[2],
+		}
+		currentVnode := execVnodes[vnode]
+		currentVnode.Mem += vnodeResources["mem"]
+		currentVnode.Ncpus += vnodeResources["ncpus"]
+		currentVnode.Nfpgas += vnodeResources["nfpgas"]
+		currentVnode.Ngpus += vnodeResources["ngpus"]
+		execVnodes[vnode] = currentVnode
+	}
+
+	return execVnodes, nil
+}
+
 func (j *Job) ParseSelect(resource string) (int64, error) {
 	var total int64 = 0
 	var nchunks int64 = 0
@@ -193,8 +246,8 @@ func (j *Job) Vnode() string {
 	primaryNode := strings.Split(j.ExecVnode, "+")[0]
 
 	vnodeMatch := pbsVnodeRegexp.FindStringSubmatch(primaryNode)
-	if len(vnodeMatch) > 1 {
-		return vnodeMatch[1]
+	if len(vnodeMatch) > 2 {
+		return vnodeMatch[2]
 	}
 
 	return ""

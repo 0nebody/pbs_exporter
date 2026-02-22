@@ -61,6 +61,7 @@ func TestCollectJobs(t *testing.T) {
 			Ngpus:    1,
 		},
 		SchedSelect: "1:ncpus=4:ngpus=1:mem=32gb:nfpgas=0",
+		ExecVnode:   "(cpu1n001[0]:ncpus=4:mem=32gb:ngpus=1:nfpgas=0)",
 		Euser:       "user",
 		Egroup:      "group",
 		RunCount:    1,

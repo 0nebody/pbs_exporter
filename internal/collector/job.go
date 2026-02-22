@@ -25,6 +25,10 @@ type JobCollector struct {
 }
 
 type JobMetrics struct {
+	allocatedMemoryDesc   *prometheus.Desc
+	allocatedNcpusDesc    *prometheus.Desc
+	allocatedNfpgasDesc   *prometheus.Desc
+	allocatedNgpusDesc    *prometheus.Desc
 	infoDesc              *prometheus.Desc
 	interactiveDesc       *prometheus.Desc
 	requestedMemoryDesc   *prometheus.Desc
@@ -82,7 +86,33 @@ func WatchPbsJobs(pbsHome string, logger *slog.Logger) error {
 }
 
 func NewJobCollector(config CollectorConfig) *JobCollector {
+	allocatedJobLabels := append(defaultJobLabels, "vnode")
+
 	jobMetrics := &JobMetrics{
+		allocatedMemoryDesc: prometheus.NewDesc(
+			"pbs_job_allocated_memory",
+			"Allocated memory on node for job.",
+			allocatedJobLabels,
+			nil,
+		),
+		allocatedNcpusDesc: prometheus.NewDesc(
+			"pbs_job_allocated_ncpus",
+			"Allocated ncpus on node for job.",
+			allocatedJobLabels,
+			nil,
+		),
+		allocatedNfpgasDesc: prometheus.NewDesc(
+			"pbs_job_allocated_nfpgas",
+			"Allocated nfpgas on node for job.",
+			allocatedJobLabels,
+			nil,
+		),
+		allocatedNgpusDesc: prometheus.NewDesc(
+			"pbs_job_allocated_ngpus",
+			"Allocated ngpus on node for job.",
+			allocatedJobLabels,
+			nil,
+		),
 		infoDesc: prometheus.NewDesc(
 			"pbs_job_info",
 			"Job information.",
@@ -166,6 +196,10 @@ func NewJobCollector(config CollectorConfig) *JobCollector {
 }
 
 func (j *JobCollector) Describe(ch chan<- *prometheus.Desc) {
+	ch <- j.metrics.allocatedMemoryDesc
+	ch <- j.metrics.allocatedNcpusDesc
+	ch <- j.metrics.allocatedNfpgasDesc
+	ch <- j.metrics.allocatedNgpusDesc
 	ch <- j.metrics.infoDesc
 	ch <- j.metrics.interactiveDesc
 	ch <- j.metrics.requestedMemoryDesc
@@ -187,13 +221,52 @@ func (j *JobCollector) Collect(ctx context.Context, ch chan<- prometheus.Metric)
 	}
 
 	for _, job := range jobCache.List() {
-		// export from primary node only.
+		jobId := job.JobId()
+		runCount := strconv.Itoa(job.RunCount)
+		jobLabels := []string{jobId, runCount}
+
+		execVnodes, err := job.ParseExecVnode()
+		if err != nil {
+			j.logger.Error("Parsing execVnode", "jobid", jobId, "error", err)
+		}
+
+		// node specific metrics.
+		for vnode, execVnode := range execVnodes {
+			if hostname != vnode.Node {
+				continue
+			}
+
+			labels := append(jobLabels, vnode.Vnode)
+			ch <- prometheus.MustNewConstMetric(
+				j.metrics.allocatedMemoryDesc,
+				prometheus.GaugeValue,
+				float64(execVnode.Mem),
+				labels...,
+			)
+			ch <- prometheus.MustNewConstMetric(
+				j.metrics.allocatedNcpusDesc,
+				prometheus.GaugeValue,
+				float64(execVnode.Ncpus),
+				labels...,
+			)
+			ch <- prometheus.MustNewConstMetric(
+				j.metrics.allocatedNfpgasDesc,
+				prometheus.GaugeValue,
+				float64(execVnode.Nfpgas),
+				labels...,
+			)
+			ch <- prometheus.MustNewConstMetric(
+				j.metrics.allocatedNgpusDesc,
+				prometheus.GaugeValue,
+				float64(execVnode.Ngpus),
+				labels...,
+			)
+		}
+
+		// export common metrics from primary node only.
 		if !job.IsPrimaryNode(hostname) {
 			continue
 		}
-
-		jobId := job.JobId()
-		runCount := strconv.Itoa(job.RunCount)
 
 		// export metrics regardless of user ID, ngpus, and node select
 		jobUserId, err := job.JobUid()
@@ -209,7 +282,6 @@ func (j *JobCollector) Collect(ctx context.Context, ch chan<- prometheus.Metric)
 			j.logger.Warn("Error getting job node select", "jobid", jobId, "error", err)
 		}
 
-		jobLabels := []string{jobId, runCount}
 		infoLabels := append(
 			jobLabels,
 			strconv.FormatBool(job.IsInteractive()),

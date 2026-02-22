@@ -429,6 +429,22 @@ local prometheusQuery = g.query.prometheus;
     + prometheusQuery.withEditorMode('code')
     + prometheusQuery.withLegendFormat('Requested Cores'),
 
+  systemCpuCoresAllocated:
+    prometheusQuery.new(
+      '$' + variables.datasource.name,
+      |||
+        sum(
+          label_replace(pbs_job_allocated_ncpus, "node", "$1", "instance", "(.*)")
+            and on (jobid, runcount)
+            pbs_job_info{queue=~"$queue", state="R"}
+            and on (node, vnode)
+            pbs_node_info{partition=~"$partition", qlist=~".*$queue.*"}
+        )
+      |||
+    )
+    + prometheusQuery.withEditorMode('code')
+    + prometheusQuery.withLegendFormat('Allocated Cores'),
+
   systemMemoryAvailable:
     prometheusQuery.new(
       '$' + variables.datasource.name,
@@ -461,6 +477,22 @@ local prometheusQuery = g.query.prometheus;
     + prometheusQuery.withEditorMode('code')
     + prometheusQuery.withLegendFormat('Requested Memory'),
 
+  systemMemoryAllocated:
+    prometheusQuery.new(
+      '$' + variables.datasource.name,
+      |||
+        sum(
+          label_replace(pbs_job_allocated_memory, "node", "$1", "instance", "(.*)")
+            and on (jobid, runcount)
+            pbs_job_info{queue=~"$queue", state="R"}
+            and on (node, vnode)
+            pbs_node_info{partition=~"$partition", qlist=~".*$queue.*"}
+        )
+      |||
+    )
+    + prometheusQuery.withEditorMode('code')
+    + prometheusQuery.withLegendFormat('Allocated Memory'),
+
   systemGpusAvailable:
     prometheusQuery.new(
       '$' + variables.datasource.name,
@@ -492,6 +524,22 @@ local prometheusQuery = g.query.prometheus;
     )
     + prometheusQuery.withEditorMode('code')
     + prometheusQuery.withLegendFormat('Requested GPUs'),
+
+  systemGpusAllocated:
+    prometheusQuery.new(
+      '$' + variables.datasource.name,
+      |||
+        sum(
+          label_replace(pbs_job_allocated_ngpus, "node", "$1", "instance", "(.*)")
+            and on (jobid, runcount)
+            pbs_job_info{queue=~"$queue", state="R"}
+            and on (node, vnode)
+            pbs_node_info{partition=~"$partition", qlist=~".*$queue.*"}
+        )
+      |||
+    )
+    + prometheusQuery.withEditorMode('code')
+    + prometheusQuery.withLegendFormat('Allocated GPUs'),
 
   systemFpgasAvailable:
     prometheusQuery.new(
