@@ -1001,7 +1001,7 @@ local prometheusQuery = g.query.prometheus;
     prometheusQuery.new(
       '$' + variables.datasource.name,
       |||
-        pbs_job_info{}
+        pbs_job_info{state="R"}
         and on (jobid, runcount)
         pbs_cgroup_cpus{instance=~"$node"}
       |||
@@ -1325,7 +1325,7 @@ local prometheusQuery = g.query.prometheus;
       ) < %(mem_low)s
     )
     * on(jobid, runcount) group_left(name, username)
-    pbs_job_info{}
+    pbs_job_info{state="R"}
     and on (jobid, runcount)
     time() - pbs_job_start_time > %(runtime)s
   ||| % config.thresholds,
@@ -1381,7 +1381,7 @@ local prometheusQuery = g.query.prometheus;
       ) < %(cpu_low)s
     )
     * on(jobid, runcount) group_left(name, username)
-    pbs_job_info{}
+    pbs_job_info{state="R"}
     and on (jobid, runcount)
     time() - pbs_job_start_time > %(runtime)s
   ||| % config.thresholds,
@@ -1483,7 +1483,7 @@ local prometheusQuery = g.query.prometheus;
       ) >= 0.90 < 1.01
     )
     * on(jobid, runcount) group_left(username, name, queue)
-    pbs_job_info{}
+    pbs_job_info{state="R"}
     and on (jobid, runcount)
     (
       pbs_job_requested_ncpus >= 2
