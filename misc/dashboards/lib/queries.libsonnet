@@ -61,11 +61,12 @@ local prometheusQuery = g.query.prometheus;
     prometheusQuery.new(
       '$' + variables.datasource.name,
       |||
-        count(
+        sum by (jobid) (
+          pbs_cgroup_cpus{jobid="$jobid"}
+          and on (instance, jobid, runcount)
           pbs_cgroup_pid_usage{jobid="$jobid"} > 0
-        )
-        / count(
-          pbs_cgroup_pid_usage{jobid="$jobid"}
+        ) / sum by (jobid) (
+          pbs_job_requested_ncpus{jobid="$jobid"}
         )
       |||
     )
@@ -361,7 +362,7 @@ local prometheusQuery = g.query.prometheus;
       |||
         min(
           pbs_job_requested_walltime{jobid="$jobid"}
-          - (
+          - on (jobid, runcount) (
             time()
             - pbs_job_start_time{jobid="$jobid"}
           )
@@ -813,19 +814,22 @@ local prometheusQuery = g.query.prometheus;
     prometheusQuery.new(
       '$' + variables.datasource.name,
       |||
-        count(
-          pbs_cgroup_pid_usage{}
+        sum(
+          pbs_cgroup_cpus{}
+          and on (instance, jobid, runcount)
+          pbs_cgroup_pid_usage{} > 0
           and on (jobid, runcount)
-          pbs_job_info{username="$username"} > 0
-        ) / count(
-          pbs_cgroup_pid_usage{}
+          pbs_job_info{username="$username"}
+        )
+        / sum(
+          pbs_job_requested_ncpus{}
           and on (jobid, runcount)
           pbs_job_info{username="$username"}
         )
       |||
     )
     + prometheusQuery.withEditorMode('code')
-    + prometheusQuery.withLegendFormat('Requested Nodes'),
+    + prometheusQuery.withLegendFormat('Utilised Nodes'),
 
   userUtilisedCores:
     prometheusQuery.new(
@@ -844,7 +848,7 @@ local prometheusQuery = g.query.prometheus;
       |||
     )
     + prometheusQuery.withEditorMode('code')
-    + prometheusQuery.withLegendFormat('Requested Cores'),
+    + prometheusQuery.withLegendFormat('Utilised Cores'),
 
   userUtilisedMemory:
     prometheusQuery.new(
@@ -853,20 +857,20 @@ local prometheusQuery = g.query.prometheus;
         (
           sum(
             pbs_cgroup_mem_usage_bytes{}
-            and on(jobid)
+            and on(jobid, runcount)
             pbs_job_info{username="$username"}
           )
         /
           sum(
             pbs_job_requested_memory{}
-            and on(jobid)
+            and on(jobid, runcount)
             pbs_job_info{username="$username"}
           )
         )
       |||
     )
     + prometheusQuery.withEditorMode('code')
-    + prometheusQuery.withLegendFormat('Requested Memory'),
+    + prometheusQuery.withLegendFormat('Utilised Memory'),
 
   userUtilisedNfpgas:
     prometheusQuery.new(
@@ -880,7 +884,7 @@ local prometheusQuery = g.query.prometheus;
       |||
     )
     + prometheusQuery.withEditorMode('code')
-    + prometheusQuery.withLegendFormat('Requested FPGAs'),
+    + prometheusQuery.withLegendFormat('Utilised FPGAs'),
 
   userUtilisedNgpus:
     prometheusQuery.new(
@@ -894,7 +898,7 @@ local prometheusQuery = g.query.prometheus;
       |||
     )
     + prometheusQuery.withEditorMode('code')
-    + prometheusQuery.withLegendFormat('Requested GPUs'),
+    + prometheusQuery.withLegendFormat('Utilised GPUs'),
 
   userUtilisedWalltime:
     prometheusQuery.new(
@@ -913,7 +917,7 @@ local prometheusQuery = g.query.prometheus;
     )
     + prometheusQuery.withInstant(true)
     + prometheusQuery.withEditorMode('code')
-    + prometheusQuery.withLegendFormat('Requested Walltime'),
+    + prometheusQuery.withLegendFormat('Utilised Walltime'),
 
   userJobTableRunning:
     prometheusQuery.new(
@@ -949,7 +953,7 @@ local prometheusQuery = g.query.prometheus;
       |||
         last_over_time(
           pbs_job_info{username="$username"}[$__range]
-        ) unless on (jobid)
+        ) unless on (jobid, runcount)
         pbs_job_info{username="$username"}
       |||
     )
@@ -965,10 +969,10 @@ local prometheusQuery = g.query.prometheus;
       |||
         last_over_time(
           pbs_job_start_time{}[$__range]
-        ) * 1000 and on (jobid)
+        ) * 1000 and on (jobid, runcount)
         last_over_time(
           pbs_job_info{username="$username"}[$__range]
-        ) unless on (jobid)
+        ) unless on (jobid, runcount)
         pbs_job_info{username="$username"}
       |||
     )
@@ -984,10 +988,10 @@ local prometheusQuery = g.query.prometheus;
       |||
         last_over_time(
           pbs_job_end_time{}[$__range]
-        ) * 1000 and on (jobid)
+        ) * 1000 and on (jobid, runcount)
         last_over_time(
           pbs_job_info{username="$username"}[$__range]
-        ) unless on (jobid)
+        ) unless on (jobid, runcount)
         pbs_job_info{username="$username"}
       |||
     )
@@ -1001,7 +1005,7 @@ local prometheusQuery = g.query.prometheus;
     prometheusQuery.new(
       '$' + variables.datasource.name,
       |||
-        pbs_job_info{}
+        pbs_job_info{state="R"}
         and on (jobid, runcount)
         pbs_cgroup_cpus{instance=~"$node"}
       |||
@@ -1325,7 +1329,7 @@ local prometheusQuery = g.query.prometheus;
       ) < %(mem_low)s
     )
     * on(jobid, runcount) group_left(name, username)
-    pbs_job_info{}
+    pbs_job_info{state="R"}
     and on (jobid, runcount)
     time() - pbs_job_start_time > %(runtime)s
   ||| % config.thresholds,
@@ -1358,7 +1362,7 @@ local prometheusQuery = g.query.prometheus;
     prometheusQuery.new(
       '$' + variables.datasource.name,
       |||
-        sum by (jobid) (
+        sum by (jobid, runcount) (
           pbs_job_requested_memory{}
         )
       |||
@@ -1381,7 +1385,7 @@ local prometheusQuery = g.query.prometheus;
       ) < %(cpu_low)s
     )
     * on(jobid, runcount) group_left(name, username)
-    pbs_job_info{}
+    pbs_job_info{state="R"}
     and on (jobid, runcount)
     time() - pbs_job_start_time > %(runtime)s
   ||| % config.thresholds,
@@ -1414,7 +1418,7 @@ local prometheusQuery = g.query.prometheus;
     prometheusQuery.new(
       '$' + variables.datasource.name,
       |||
-        sum by (jobid) (
+        sum by (jobid, runcount) (
           pbs_job_requested_ncpus{}
         )
       |||
@@ -1465,7 +1469,7 @@ local prometheusQuery = g.query.prometheus;
     prometheusQuery.new(
       '$' + variables.datasource.name,
       |||
-        sum by (jobid) (
+        sum by (jobid, runcount) (
           pbs_job_requested_ngpus{}
         )
       |||
@@ -1483,7 +1487,7 @@ local prometheusQuery = g.query.prometheus;
       ) >= 0.90 < 1.01
     )
     * on(jobid, runcount) group_left(username, name, queue)
-    pbs_job_info{}
+    pbs_job_info{state="R"}
     and on (jobid, runcount)
     (
       pbs_job_requested_ncpus >= 2
