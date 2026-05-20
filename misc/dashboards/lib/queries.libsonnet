@@ -361,7 +361,7 @@ local prometheusQuery = g.query.prometheus;
       |||
         min(
           pbs_job_requested_walltime{jobid="$jobid"}
-          - (
+          - on (jobid, runcount) (
             time()
             - pbs_job_start_time{jobid="$jobid"}
           )
