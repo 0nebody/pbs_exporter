@@ -171,7 +171,7 @@ func NewJobCollector(config CollectorConfig) *JobCollector {
 		runCountDesc: prometheus.NewDesc(
 			"pbs_job_run_count_total",
 			"Number of times the job has been executed.",
-			defaultJobLabels,
+			[]string{"jobid"},
 			nil,
 		),
 		startTimeDesc: prometheus.NewDesc(
@@ -362,7 +362,7 @@ func (j *JobCollector) Collect(ctx context.Context, ch chan<- prometheus.Metric)
 			j.metrics.runCountDesc,
 			prometheus.CounterValue,
 			float64(job.RunCount),
-			jobLabels...,
+			[]string{jobId}...,
 		)
 		ch <- prometheus.MustNewConstMetric(
 			j.metrics.startTimeDesc,

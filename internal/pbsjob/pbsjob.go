@@ -45,6 +45,7 @@ type ResourcesUsed struct {
 	Vmem       int64    `pbs:"vmem"`
 	Walltime   string   `pbs:"walltime"`
 }
+
 type ResourceList struct {
 	Mem      int64  `pbs:"mem"`
 	Ncpus    int    `pbs:"ncpus"`
