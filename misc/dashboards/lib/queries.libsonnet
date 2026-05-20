@@ -853,13 +853,13 @@ local prometheusQuery = g.query.prometheus;
         (
           sum(
             pbs_cgroup_mem_usage_bytes{}
-            and on(jobid)
+            and on(jobid, runcount)
             pbs_job_info{username="$username"}
           )
         /
           sum(
             pbs_job_requested_memory{}
-            and on(jobid)
+            and on(jobid, runcount)
             pbs_job_info{username="$username"}
           )
         )
@@ -949,7 +949,7 @@ local prometheusQuery = g.query.prometheus;
       |||
         last_over_time(
           pbs_job_info{username="$username"}[$__range]
-        ) unless on (jobid)
+        ) unless on (jobid, runcount)
         pbs_job_info{username="$username"}
       |||
     )
@@ -965,10 +965,10 @@ local prometheusQuery = g.query.prometheus;
       |||
         last_over_time(
           pbs_job_start_time{}[$__range]
-        ) * 1000 and on (jobid)
+        ) * 1000 and on (jobid, runcount)
         last_over_time(
           pbs_job_info{username="$username"}[$__range]
-        ) unless on (jobid)
+        ) unless on (jobid, runcount)
         pbs_job_info{username="$username"}
       |||
     )
@@ -984,10 +984,10 @@ local prometheusQuery = g.query.prometheus;
       |||
         last_over_time(
           pbs_job_end_time{}[$__range]
-        ) * 1000 and on (jobid)
+        ) * 1000 and on (jobid, runcount)
         last_over_time(
           pbs_job_info{username="$username"}[$__range]
-        ) unless on (jobid)
+        ) unless on (jobid, runcount)
         pbs_job_info{username="$username"}
       |||
     )
@@ -1358,7 +1358,7 @@ local prometheusQuery = g.query.prometheus;
     prometheusQuery.new(
       '$' + variables.datasource.name,
       |||
-        sum by (jobid) (
+        sum by (jobid, runcount) (
           pbs_job_requested_memory{}
         )
       |||
@@ -1414,7 +1414,7 @@ local prometheusQuery = g.query.prometheus;
     prometheusQuery.new(
       '$' + variables.datasource.name,
       |||
-        sum by (jobid) (
+        sum by (jobid, runcount) (
           pbs_job_requested_ncpus{}
         )
       |||
@@ -1465,7 +1465,7 @@ local prometheusQuery = g.query.prometheus;
     prometheusQuery.new(
       '$' + variables.datasource.name,
       |||
-        sum by (jobid) (
+        sum by (jobid, runcount) (
           pbs_job_requested_ngpus{}
         )
       |||
