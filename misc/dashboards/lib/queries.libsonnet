@@ -1520,6 +1520,62 @@ local prometheusQuery = g.query.prometheus;
     + prometheusQuery.withInstant(true)
     + prometheusQuery.withLegendFormat('{{ username }}'),
 
+  local lowNodeUtilJobs = |||
+     (
+       sum by (jobid, runcount) (
+         pbs_job_allocated_ncpus{}
+         and on (instance, jobid, runcount) (pbs_cgroup_cpus{})
+         and on (instance, jobid, runcount) (pbs_cgroup_pid_usage{} > 0)
+       ) /
+       sum by (jobid, runcount) (
+         pbs_job_requested_ncpus{}
+       ) < 1
+     )
+     * on (jobid, runcount) group_left(username, name, queue)
+     pbs_job_info{state="R"}
+     and on (jobid, runcount)
+     time() - pbs_job_start_time > 300
+  ||| % config.thresholds,
+
+  jobSingleNode:
+    prometheusQuery.new(
+      '$' + variables.datasource.name,
+      lowNodeUtilJobs,
+    )
+    + prometheusQuery.withEditorMode('code')
+    + prometheusQuery.withFormat('table')
+    + prometheusQuery.withInstant(true)
+    + prometheusQuery.withLegendFormat('Used')
+    + prometheusQuery.withRefId('used'),
+
+  jobLowNodeUtilByUser:
+    prometheusQuery.new(
+      '$' + variables.datasource.name,
+      |||
+        count by (username) (
+          %(lowNodeUtilJobs)s
+        )
+      ||| % lowNodeUtilJobs
+    )
+    + prometheusQuery.withEditorMode('code')
+    + prometheusQuery.withInstant(true)
+    + prometheusQuery.withLegendFormat('{{ username }}'),
+
+  jobLowNodeRequested:
+    prometheusQuery.new(
+      '$' + variables.datasource.name,
+      |||
+        sum by (jobid, runcount) (
+          pbs_job_requested_nodes{}
+        )
+      |||
+    )
+    + prometheusQuery.withEditorMode('code')
+    + prometheusQuery.withFormat('table')
+    + prometheusQuery.withInstant(true)
+    + prometheusQuery.withLegendFormat('Req Nodes')
+    + prometheusQuery.withRefId('requested'),
+
   jobTableRunningStart:
     prometheusQuery.new(
       '$' + variables.datasource.name,
