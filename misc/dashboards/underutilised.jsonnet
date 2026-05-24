@@ -46,7 +46,12 @@ g.dashboard.new('PBS Underutilised Jobs')
               'Number of jobs by user requesting more than one core with usage patterns of a single core job',
               [queries.jobLowCoreUtilByUser]
             ),
-          ]), panelWidth=6, panelHeight=8
+            panels.pie.byUser(
+              'User Single Node Jobs',
+              'Number of jobs by user requesting more than one node with usage patterns of a single node job',
+              [queries.jobLowNodeUtilByUser]
+            ),
+          ]), panelWidth=8, panelHeight=10
         ),
       ),
       row.new('Job List')
@@ -74,6 +79,11 @@ g.dashboard.new('PBS Underutilised Jobs')
               'Single Core Jobs',
               'Jobs requesting more than one core with usage patterns of a single core job',
               [queries.jobLowCoreUtil, queries.jobLowCpuRequested, queries.jobTableRunningStart]
+            ),
+            panels.table.badjob(
+              'Single Node Jobs',
+              'Jobs requesting more than one node running only on the primary node',
+              [queries.jobSingleNode, queries.jobLowNodeRequested, queries.jobTableRunningStart]
             ),
           ]), panelWidth=24, panelHeight=10
         ),
