@@ -247,7 +247,7 @@ local prometheusQuery = g.query.prometheus;
       |||
         avg(
           label_replace(
-            DCGM_FI_DEV_GPU_UTIL{hpc_job=~"^$jobid.*", instance=~"$node"}, "jobid", "$1", "hpc_job", "([^.]+).*"
+            DCGM_FI_DEV_GPU_UTIL{hpc_job=~`^${jobid:regex}.*`, instance=~"$node"}, "jobid", "$1", "hpc_job", "([^.]+).*"
           ) and on (jobid, instance)
           pbs_job_info{username="$username"}
         ) / 100
@@ -260,7 +260,7 @@ local prometheusQuery = g.query.prometheus;
     prometheusQuery.new(
       '$' + variables.datasource.name,
       |||
-        DCGM_FI_DEV_GPU_UTIL{instance=~"$node", hpc_job=~"^$jobid.*"}
+        DCGM_FI_DEV_GPU_UTIL{instance=~"$node", hpc_job=~`^${jobid:regex}.*`}
       |||
     )
     + prometheusQuery.withEditorMode('code')
@@ -270,7 +270,7 @@ local prometheusQuery = g.query.prometheus;
     prometheusQuery.new(
       '$' + variables.datasource.name,
       |||
-        DCGM_FI_PROF_PIPE_TENSOR_ACTIVE{instance=~"$node", hpc_job=~"^$jobid.*"}
+        DCGM_FI_PROF_PIPE_TENSOR_ACTIVE{instance=~"$node", hpc_job=~`^${jobid:regex}.*`}
       |||
     )
     + prometheusQuery.withEditorMode('code')
@@ -280,7 +280,7 @@ local prometheusQuery = g.query.prometheus;
     prometheusQuery.new(
       '$' + variables.datasource.name,
       |||
-        DCGM_FI_DEV_FB_USED{instance=~"$node", hpc_job=~"^$jobid.*"}
+        DCGM_FI_DEV_FB_USED{instance=~"$node", hpc_job=~`^${jobid:regex}.*`}
       |||
     )
     + prometheusQuery.withEditorMode('code')
@@ -290,7 +290,7 @@ local prometheusQuery = g.query.prometheus;
     prometheusQuery.new(
       '$' + variables.datasource.name,
       |||
-        DCGM_FI_DEV_POWER_USAGE{instance=~"$node", hpc_job=~"^$jobid.*"}
+        DCGM_FI_DEV_POWER_USAGE{instance=~"$node", hpc_job=~`^${jobid:regex}.*`}
       |||
     )
     + prometheusQuery.withEditorMode('code')
