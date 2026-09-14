@@ -11,6 +11,7 @@ var testMetric = &Metrics{
 	Path: "",
 	Cpu: CPU{
 		Count:  0,
+		Psi:    PSI{Some: 100, Full: 50},
 		System: 1,
 		Usage:  1,
 		User:   1,
@@ -24,6 +25,7 @@ var testMetric = &Metrics{
 		},
 	},
 	Io: IO{
+		Psi: PSI{Some: 200, Full: 100},
 		Usage: []IoUsage{
 			{
 				Major:  253,
@@ -43,6 +45,7 @@ var testMetric = &Metrics{
 		Limit:        999,
 		Pgfault:      0,
 		Pgmajfault:   0,
+		Psi:          PSI{Some: 300, Full: 150},
 		Rss:          333,
 		Shmem:        0,
 		SwapLimit:    0,

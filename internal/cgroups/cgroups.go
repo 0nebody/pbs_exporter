@@ -38,6 +38,7 @@ type Metrics struct {
 
 type CPU struct {
 	Count  int
+	Psi    PSI
 	System uint64
 	Usage  uint64
 	User   uint64
@@ -51,6 +52,7 @@ type Hugetlb struct {
 }
 
 type IO struct {
+	Psi   PSI
 	Usage []IoUsage
 }
 
@@ -69,6 +71,7 @@ type Memory struct {
 	InactiveAnon uint64
 	InactiveFile uint64
 	Limit        uint64
+	Psi          PSI
 	Pgfault      uint64
 	Pgmajfault   uint64
 	Rss          uint64
@@ -77,6 +80,11 @@ type Memory struct {
 	SwapUsage    uint64
 	Usage        uint64
 	Wss          uint64
+}
+
+type PSI struct {
+	Some uint64
+	Full uint64
 }
 
 type Tasks struct {

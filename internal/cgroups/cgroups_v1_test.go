@@ -164,13 +164,20 @@ func TestStatV1(t *testing.T) {
 		cgroup:     MockCgroupV1,
 		subsystems: []string{"blkio", "cpu", "hugetlb", "memory", "pids"},
 	}
-	testMetric.Controllers = cgroup.subsystems
+
+	// cgroups v1 does not support PSI
+	want := *testMetric
+	want.Controllers = cgroup.subsystems
+	want.Cpu.Psi = PSI{}
+	want.Io.Psi = PSI{}
+	want.Memory.Psi = PSI{}
+
 	got, err := cgroup.Stat()
 	if err != nil {
 		t.Fatalf("Stat() returned error: %v", err)
 	}
-	if !reflect.DeepEqual(got, testMetric) {
-		t.Errorf("Stat() = %+v, want %+v", got, testMetric)
+	if !reflect.DeepEqual(got, &want) {
+		t.Errorf("Stat() = %+v, want %+v", got, &want)
 	}
 }
 
