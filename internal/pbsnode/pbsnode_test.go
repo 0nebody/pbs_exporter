@@ -173,6 +173,124 @@ var testVNode = Nodes{
 	},
 }
 
+var testMultiGpuNode = Nodes{
+	PbsVersion: "2026.0.0.20250926080934",
+	PbsServer:  "pbs",
+	Nodes: map[string]Node{
+		"gpu0n001": {
+			Mom:        "gpu0n001.local.domain",
+			Port:       15002,
+			PbsVersion: "2026.0.0.20250926080934",
+			Ntype:      "PBS",
+			State:      "free",
+			PCpus:      128,
+			Jobs:       []string(nil),
+			ResourcesAvailable: resourcesAvailable{
+				Arch:   "linux",
+				Host:   "gpu0n001",
+				Hpmem:  0,
+				Mem:    0,
+				Ncpus:  0,
+				Ngpus:  0,
+				Nfpgas: 0,
+				Qlist:  "gpu_batch_exec",
+				Vmem:   1048609247232,
+				Vnode:  "gpu0n001",
+			},
+			ResourcesAssigned: resourcesAssigned{
+				Hpmem: 0,
+				Mem:   0,
+				Ncpus: 0,
+				Ngpus: 0,
+				Vmem:  0,
+			},
+			Comment:             "",
+			ResvEnable:          "True",
+			Sharing:             "default_shared",
+			InMultivnodeHost:    1,
+			License:             "l",
+			Partition:           "gpu_batch",
+			LastStateChangeTime: 1789339816,
+			LastUsedTime:        0,
+			ServerInstanceId:    "login.local.domain:15001",
+		},
+		"gpu0n001[0]": {
+			Mom:        "gpu0n001.local.domain",
+			Port:       15002,
+			PbsVersion: "2026.0.0.20250926080934",
+			Ntype:      "PBS",
+			State:      "free",
+			PCpus:      0,
+			Jobs:       []string(nil),
+			ResourcesAvailable: resourcesAvailable{
+				Arch:   "linux",
+				Host:   "gpu0n001",
+				Hpmem:  11861491712,
+				Mem:    522548412416,
+				Ncpus:  56,
+				Ngpus:  2,
+				Nfpgas: 2,
+				Qlist:  "gpu_batch_exec",
+				Vmem:   0,
+				Vnode:  "gpu0n001[0]",
+			},
+			ResourcesAssigned: resourcesAssigned{
+				Hpmem: 0,
+				Mem:   0,
+				Ncpus: 0,
+				Ngpus: 0,
+				Vmem:  0,
+			},
+			Comment:             "",
+			ResvEnable:          "True",
+			Sharing:             "default_shared",
+			InMultivnodeHost:    1,
+			License:             "l",
+			Partition:           "gpu_batch",
+			LastStateChangeTime: 1789339816,
+			LastUsedTime:        0,
+			ServerInstanceId:    "login.local.domain:15001",
+		},
+		"gpu0n001[1]": {
+			Mom:        "gpu0n001.local.domain",
+			Port:       15002,
+			PbsVersion: "2026.0.0.20250926080934",
+			Ntype:      "PBS",
+			State:      "free",
+			PCpus:      0,
+			Jobs:       []string(nil),
+			ResourcesAvailable: resourcesAvailable{
+				Arch:   "linux",
+				Host:   "gpu0n001",
+				Hpmem:  0,
+				Mem:    523910512640,
+				Ncpus:  64,
+				Ngpus:  2,
+				Nfpgas: 0,
+				Qlist:  "gpu_batch_exec",
+				Vmem:   0,
+				Vnode:  "gpu0n001[1]",
+			},
+			ResourcesAssigned: resourcesAssigned{
+				Hpmem: 0,
+				Mem:   0,
+				Ncpus: 0,
+				Ngpus: 0,
+				Vmem:  0,
+			},
+			Comment:             "",
+			ResvEnable:          "True",
+			Sharing:             "default_shared",
+			InMultivnodeHost:    1,
+			License:             "l",
+			Partition:           "gpu_batch",
+			LastStateChangeTime: 1789339816,
+			LastUsedTime:        0,
+			ServerInstanceId:    "login.local.domain:15001",
+		},
+	},
+}
+
 func TestUnmarshalJSON(t *testing.T) {
 	type testStruct struct {
 		Mem hbytes `json:"mem"`
@@ -231,19 +349,26 @@ func TestUnmarshalJSON(t *testing.T) {
 func TestVnode(t *testing.T) {
 	node := &Node{}
 	tests := []struct {
-		input string
-		want  string
+		input        string
+		wantVnode    string
+		wantSubVnode string
 	}{
-		{"", ""},
-		{"cpu1n001", ""},
-		{"cpu1n001[0]", "0"},
+		{"", "", ""},
+		{"cpu1n001", "", ""},
+		{"cpu1n001[0]", "0", ""},
+		{"cpu1n001[100]", "100", ""},
+		{"gpu0n001[0.0]", "0", "0"},
+		{"gpu0n001[100.100]", "100", "100"},
 	}
 
 	for _, test := range tests {
 		node.ResourcesAvailable.Vnode = test.input
-		got := node.Vnode()
-		if got != test.want {
-			t.Errorf("Vnode() = %v, want %v", got, test.want)
+		gotVnode, gotSubVnode := node.Vnode()
+		if gotVnode != test.wantVnode {
+			t.Errorf("Vnode() = %v, want %v", gotVnode, test.wantVnode)
+		}
+		if gotSubVnode != test.wantSubVnode {
+			t.Errorf("Vnode() = %v, want %v", gotSubVnode, test.wantSubVnode)
 		}
 	}
 }
@@ -464,6 +589,36 @@ func TestParsePbsNodes(t *testing.T) {
 	})
 }
 
+func TestParsePbsNodesDeletesOrphanSubVnodes(t *testing.T) {
+	output := []byte(`{
+		"nodes": {
+			"gpu0n001[1.0]": {
+				"resources_available": {
+					"host": "gpu0n001",
+					"ngpus": 1,
+					"vnode": "gpu0n001[1.0]"
+				}
+			},
+			"gpu0n001[1.1]": {
+				"resources_available": {
+					"host": "gpu0n001",
+					"ngpus": 1,
+					"vnode": "gpu0n001[1.1]"
+				}
+			}
+		}
+	}`)
+
+	nodes := &Nodes{}
+	if err := parsePbsNodes(output, nodes); err != nil {
+		t.Fatalf("parsePbsNodes() failed: %v", err)
+	}
+
+	if len(nodes.Nodes) != 0 {
+		t.Errorf("parsePbsNodes() did not delete sub-vnodes: %v", nodes.Nodes)
+	}
+}
+
 type mockCommandExecutor struct {
 	stdoutData string
 	stderrData string
@@ -492,6 +647,12 @@ func TestGetPbsNodes(t *testing.T) {
 	}
 	vnodeOutput := string(content)
 
+	content, err = os.ReadFile("./testdata/multi_gpu.json")
+	if err != nil {
+		t.Fatalf("Failed to read testdata: %v", err)
+	}
+	multiGpuOutput := string(content)
+
 	tests := []struct {
 		name      string
 		executor  cmdExecutor
@@ -512,6 +673,14 @@ func TestGetPbsNodes(t *testing.T) {
 				stdoutData: vnodeOutput,
 			},
 			want:      &testVNode,
+			wantError: false,
+		},
+		{
+			name: "Multi GPU collection",
+			executor: &mockCommandExecutor{
+				stdoutData: multiGpuOutput,
+			},
+			want:      &testMultiGpuNode,
 			wantError: false,
 		},
 		{

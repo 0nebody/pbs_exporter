@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os/exec"
 	"regexp"
@@ -15,10 +16,11 @@ import (
 
 var (
 	executor       cmdExecutor = &shellCmdExecutor{}
-	pbsVnodeRegexp             = regexp.MustCompile(`[a-zA-Z0-9_.-]+\[(\d)\]`)
+	pbsVnodeRegexp             = regexp.MustCompile(`[a-zA-Z0-9_.-]+\[(\d+)\.?(\d+)?\]`)
 )
 
 type hbytes int64
+type pbsInt int
 
 func (hrb *hbytes) UnmarshalJSON(data []byte) error {
 	if string(data) == "null" {
@@ -28,6 +30,11 @@ func (hrb *hbytes) UnmarshalJSON(data []byte) error {
 
 	var s string
 	if err := json.Unmarshal(data, &s); err == nil {
+		if strings.HasPrefix(s, "@") {
+			*hrb = hbytes(0)
+			return nil
+		}
+
 		value, err := units.RAMInBytes(s)
 		if err != nil {
 			return fmt.Errorf("parse human-readable bytes string '%s': %w", s, err)
@@ -43,6 +50,24 @@ func (hrb *hbytes) UnmarshalJSON(data []byte) error {
 	}
 
 	return fmt.Errorf("unmarshalling '%s' as hbytes", string(data))
+}
+
+func (v *pbsInt) UnmarshalJSON(data []byte) error {
+	var n int
+	if err := json.Unmarshal(data, &n); err == nil {
+		*v = pbsInt(n)
+		return nil
+	}
+
+	var s string
+	if err := json.Unmarshal(data, &s); err == nil {
+		if strings.HasPrefix(s, "@") {
+			*v = pbsInt(0)
+			return nil
+		}
+	}
+
+	return fmt.Errorf("unmarshalling '%s' as pbsInt", string(data))
 }
 
 type Nodes struct {
@@ -79,7 +104,7 @@ type resourcesAvailable struct {
 	Host   string `json:"host"`
 	Hpmem  hbytes `json:"hpmem"`
 	Mem    hbytes `json:"mem"`
-	Ncpus  int    `json:"ncpus"`
+	Ncpus  pbsInt `json:"ncpus"`
 	Ngpus  int    `json:"ngpus"`
 	Nfpgas int    `json:"nfpgas"`
 	Qlist  string `json:"qlist"`
@@ -90,18 +115,25 @@ type resourcesAvailable struct {
 type resourcesAssigned struct {
 	Hpmem hbytes `json:"hpmem"`
 	Mem   hbytes `json:"mem"`
-	Ncpus int    `json:"ncpus"`
+	Ncpus pbsInt `json:"ncpus"`
 	Ngpus int    `json:"ngpus"`
 	Vmem  hbytes `json:"vmem"`
 }
 
-func (n Node) Vnode() string {
-	vnodeMatch := pbsVnodeRegexp.FindStringSubmatch(n.ResourcesAvailable.Vnode)
-	if len(vnodeMatch) > 1 {
-		return vnodeMatch[1]
+func (n Node) Vnode() (string, string) {
+	vnode := ""
+	subVnode := ""
+
+	subVnodeMatch := pbsVnodeRegexp.FindStringSubmatch(n.ResourcesAvailable.Vnode)
+	if len(subVnodeMatch) > 1 {
+		vnode = subVnodeMatch[1]
 	}
 
-	return ""
+	if len(subVnodeMatch) > 2 {
+		subVnode = subVnodeMatch[2]
+	}
+
+	return vnode, subVnode
 }
 
 func (n Node) IsLicensed() int {
@@ -239,11 +271,50 @@ func pbsNodeCommand(node string) []string {
 }
 
 func parsePbsNodes(output []byte, nodes *Nodes) error {
-	if err := json.Unmarshal(output, &nodes); err != nil {
+	var raw struct {
+		PbsVersion string                     `json:"pbs_version"`
+		PbsServer  string                     `json:"pbs_server"`
+		Nodes      map[string]json.RawMessage `json:"nodes"`
+	}
+	if err := json.Unmarshal(output, &raw); err != nil {
 		return err
 	}
 
-	return nil
+	nodes.PbsVersion = raw.PbsVersion
+	nodes.PbsServer = raw.PbsServer
+	nodes.Nodes = make(map[string]Node, len(raw.Nodes))
+
+	var errs []error
+	for name, rawNode := range raw.Nodes {
+		var node Node
+		if err := json.Unmarshal(rawNode, &node); err != nil {
+			errs = append(errs, fmt.Errorf("node %s: %w", name, err))
+			continue
+		}
+		nodes.Nodes[name] = node
+	}
+
+	// copy data from sub-vnodes and delete
+	for name, node := range nodes.Nodes {
+		vnode, subVnode := node.Vnode()
+		_ = vnode
+		if subVnode == "" {
+			continue
+		}
+
+		parentVnodeName := fmt.Sprintf("%s[%s]", node.ResourcesAvailable.Host, vnode)
+		parentVnode, ok := nodes.Nodes[parentVnodeName]
+		if !ok {
+			delete(nodes.Nodes, name)
+			continue
+		}
+
+		parentVnode.ResourcesAvailable.Ngpus += node.ResourcesAvailable.Ngpus
+		nodes.Nodes[parentVnodeName] = parentVnode
+		delete(nodes.Nodes, name)
+	}
+
+	return errors.Join(errs...)
 }
 
 func GetPbsNodes(ctx context.Context) (*Nodes, error) {

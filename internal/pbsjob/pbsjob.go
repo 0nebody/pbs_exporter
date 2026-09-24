@@ -18,7 +18,7 @@ import (
 )
 
 var (
-	pbsVnodeRegexp = regexp.MustCompile(`([a-zA-Z0-9_.-]+)\[(\d+)\]`)
+	pbsVnodeRegexp = regexp.MustCompile(`([a-zA-Z0-9_.-]+)\[(\d+)\.?(\d+)?\]`)
 )
 
 type Vnode struct {
