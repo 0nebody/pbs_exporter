@@ -118,7 +118,7 @@ func (n *NodeCollector) Collect(ctx context.Context, ch chan<- prometheus.Metric
 		}
 
 		// configuration error; skip
-		vnode := v.Vnode()
+		vnode, _ := v.Vnode()
 		if vnode == "" && v.InMultivnodeHost == 1 {
 			n.logger.Error("Vnode is empty for multi-vnode node", "host", host)
 			continue
