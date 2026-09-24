@@ -12,8 +12,8 @@ var (
 )
 
 type CgroupV2Api interface {
-	Procs(bool) ([]uint64, error)
 	Controllers() ([]string, error)
+	Procs(bool) ([]uint64, error)
 	Stat() (*v2.Metrics, error)
 	Threads(bool) ([]uint64, error)
 }
@@ -71,6 +71,7 @@ func (c *CgroupV2) Stat() (*Metrics, error) {
 
 	if slices.Contains(metrics.Controllers, "cpu") {
 		statCPU := stat.GetCPU()
+		metrics.Cpu.Psi.Some, metrics.Cpu.Psi.Full = c.PsiTotals(statCPU.GetPSI())
 		metrics.Cpu.System = statCPU.GetSystemUsec() / microsecPerSecond
 		metrics.Cpu.Usage = statCPU.GetUsageUsec() / microsecPerSecond
 		metrics.Cpu.User = statCPU.GetUserUsec() / microsecPerSecond
@@ -99,6 +100,7 @@ func (c *CgroupV2) Stat() (*Metrics, error) {
 	if slices.Contains(metrics.Controllers, "io") {
 		statIO := stat.GetIo()
 		statIoUsage := statIO.GetUsage()
+		metrics.Io.Psi.Some, metrics.Io.Psi.Full = c.PsiTotals(statIO.GetPSI())
 		for _, ioUsage := range statIoUsage {
 			metrics.Io.Usage = append(metrics.Io.Usage, IoUsage{
 				Major:  ioUsage.GetMajor(),
@@ -129,6 +131,8 @@ func (c *CgroupV2) Stat() (*Metrics, error) {
 
 		metrics.Memory.Pgfault = statMemory.GetPgfault()
 		metrics.Memory.Pgmajfault = statMemory.GetPgmajfault()
+
+		metrics.Memory.Psi.Some, metrics.Memory.Psi.Full = c.PsiTotals(statMemory.GetPSI())
 	}
 
 	if slices.Contains(metrics.Controllers, "pids") {
@@ -163,6 +167,21 @@ func (c *CgroupV2) Procs() ([]uint64, error) {
 	}
 
 	return processIds, nil
+}
+
+func (c *CgroupV2) PsiTotals(psiStats *v2.PSIStats) (uint64, uint64) {
+	var someTotal, fullTotal uint64 = 0, 0
+
+	if psiStats != nil {
+		if some := psiStats.GetSome(); some != nil {
+			someTotal = some.Total / microsecPerSecond
+		}
+		if full := psiStats.GetFull(); full != nil {
+			fullTotal = full.Total / microsecPerSecond
+		}
+	}
+
+	return someTotal, fullTotal
 }
 
 func (c *CgroupV2) Threads() ([]uint64, error) {

@@ -2,10 +2,11 @@ package collector
 
 import (
 	"context"
-	"golang.org/x/sync/errgroup"
 	"log/slog"
 	"strconv"
 	"sync"
+
+	"golang.org/x/sync/errgroup"
 
 	"github.com/0nebody/pbs_exporter/internal/cgroups"
 	"github.com/0nebody/pbs_exporter/internal/utils"
@@ -22,12 +23,16 @@ type CgroupCollector struct {
 
 type CgroupMetrics struct {
 	cpuCountDesc        *prometheus.Desc
+	cpuPsiFullDesc      *prometheus.Desc
+	cpuPsiSomeDesc      *prometheus.Desc
 	cpuSystemDesc       *prometheus.Desc
 	cpuUsageDesc        *prometheus.Desc
 	cpuUserDesc         *prometheus.Desc
 	hugetlbFailCntDesc  *prometheus.Desc
 	hugetlbMaxDesc      *prometheus.Desc
 	hugetlbUsageDesc    *prometheus.Desc
+	ioPsiFullDesc       *prometheus.Desc
+	ioPsiSomeDesc       *prometheus.Desc
 	ioRbytesDesc        *prometheus.Desc
 	ioRiosDesc          *prometheus.Desc
 	ioWbytesDesc        *prometheus.Desc
@@ -40,6 +45,8 @@ type CgroupMetrics struct {
 	memLimitDesc        *prometheus.Desc
 	memPgfaultDesc      *prometheus.Desc
 	memPgmajfaultDesc   *prometheus.Desc
+	memPsiFullDesc      *prometheus.Desc
+	memPsiSomeDesc      *prometheus.Desc
 	memRssDesc          *prometheus.Desc
 	memShmemDesc        *prometheus.Desc
 	memSwapLimitDesc    *prometheus.Desc
@@ -58,6 +65,18 @@ func NewCgroupCollector(config CollectorConfig) *CgroupCollector {
 		cpuCountDesc: prometheus.NewDesc(
 			"pbs_cgroup_cpus",
 			"Number of CPUs allocated to the cgroup.",
+			defaultJobLabels,
+			nil,
+		),
+		cpuPsiFullDesc: prometheus.NewDesc(
+			"pbs_cgroup_cpu_psi_full_total",
+			"CPU pressure stall information (PSI) full metric.",
+			defaultJobLabels,
+			nil,
+		),
+		cpuPsiSomeDesc: prometheus.NewDesc(
+			"pbs_cgroup_cpu_psi_some_total",
+			"CPU pressure stall information (PSI) some metric.",
 			defaultJobLabels,
 			nil,
 		),
@@ -95,6 +114,18 @@ func NewCgroupCollector(config CollectorConfig) *CgroupCollector {
 			"pbs_cgroup_hugetlb_usage_bytes",
 			"Current huge page memory usage of tasks in the cgroup.",
 			hugetlbJobLabels,
+			nil,
+		),
+		ioPsiFullDesc: prometheus.NewDesc(
+			"pbs_cgroup_io_psi_full_total",
+			"IO pressure stall information (PSI) full metric.",
+			defaultJobLabels,
+			nil,
+		),
+		ioPsiSomeDesc: prometheus.NewDesc(
+			"pbs_cgroup_io_psi_some_total",
+			"IO pressure stall information (PSI) some metric.",
+			defaultJobLabels,
 			nil,
 		),
 		ioRbytesDesc: prometheus.NewDesc(
@@ -169,6 +200,18 @@ func NewCgroupCollector(config CollectorConfig) *CgroupCollector {
 			defaultJobLabels,
 			nil,
 		),
+		memPsiFullDesc: prometheus.NewDesc(
+			"pbs_cgroup_mem_psi_full_total",
+			"Memory pressure stall information (PSI) full metric.",
+			defaultJobLabels,
+			nil,
+		),
+		memPsiSomeDesc: prometheus.NewDesc(
+			"pbs_cgroup_mem_psi_some_total",
+			"Memory pressure stall information (PSI) some metric.",
+			defaultJobLabels,
+			nil,
+		),
 		memRssDesc: prometheus.NewDesc(
 			"pbs_cgroup_mem_rss_bytes",
 			"Resident Set Size (RSS): memory required to run tasks in the cgroup",
@@ -236,12 +279,16 @@ func NewCgroupCollector(config CollectorConfig) *CgroupCollector {
 
 func (c *CgroupCollector) Describe(ch chan<- *prometheus.Desc) {
 	ch <- c.metrics.cpuCountDesc
+	ch <- c.metrics.cpuPsiFullDesc
+	ch <- c.metrics.cpuPsiSomeDesc
 	ch <- c.metrics.cpuSystemDesc
 	ch <- c.metrics.cpuUsageDesc
 	ch <- c.metrics.cpuUserDesc
 	ch <- c.metrics.hugetlbFailCntDesc
 	ch <- c.metrics.hugetlbMaxDesc
 	ch <- c.metrics.hugetlbUsageDesc
+	ch <- c.metrics.ioPsiFullDesc
+	ch <- c.metrics.ioPsiSomeDesc
 	ch <- c.metrics.ioRbytesDesc
 	ch <- c.metrics.ioRiosDesc
 	ch <- c.metrics.ioWbytesDesc
@@ -254,6 +301,8 @@ func (c *CgroupCollector) Describe(ch chan<- *prometheus.Desc) {
 	ch <- c.metrics.memLimitDesc
 	ch <- c.metrics.memPgfaultDesc
 	ch <- c.metrics.memPgmajfaultDesc
+	ch <- c.metrics.memPsiFullDesc
+	ch <- c.metrics.memPsiSomeDesc
 	ch <- c.metrics.memRssDesc
 	ch <- c.metrics.memShmemDesc
 	ch <- c.metrics.memSwapLimitDesc
@@ -353,6 +402,18 @@ func (c *CgroupCollector) Collect(ctx context.Context, ch chan<- prometheus.Metr
 			jobLabels...,
 		)
 		ch <- prometheus.MustNewConstMetric(
+			c.metrics.cpuPsiFullDesc,
+			prometheus.CounterValue,
+			float64(metric.Cpu.Psi.Full),
+			jobLabels...,
+		)
+		ch <- prometheus.MustNewConstMetric(
+			c.metrics.cpuPsiSomeDesc,
+			prometheus.CounterValue,
+			float64(metric.Cpu.Psi.Some),
+			jobLabels...,
+		)
+		ch <- prometheus.MustNewConstMetric(
 			c.metrics.cpuSystemDesc,
 			prometheus.CounterValue,
 			float64(metric.Cpu.System),
@@ -419,6 +480,18 @@ func (c *CgroupCollector) Collect(ctx context.Context, ch chan<- prometheus.Metr
 			jobLabels...,
 		)
 		ch <- prometheus.MustNewConstMetric(
+			c.metrics.memPsiFullDesc,
+			prometheus.CounterValue,
+			float64(metric.Memory.Psi.Full),
+			jobLabels...,
+		)
+		ch <- prometheus.MustNewConstMetric(
+			c.metrics.memPsiSomeDesc,
+			prometheus.CounterValue,
+			float64(metric.Memory.Psi.Some),
+			jobLabels...,
+		)
+		ch <- prometheus.MustNewConstMetric(
 			c.metrics.memRssDesc,
 			prometheus.GaugeValue,
 			float64(metric.Memory.Rss),
@@ -452,6 +525,18 @@ func (c *CgroupCollector) Collect(ctx context.Context, ch chan<- prometheus.Metr
 			c.metrics.memWssDesc,
 			prometheus.GaugeValue,
 			float64(metric.Memory.Wss),
+			jobLabels...,
+		)
+		ch <- prometheus.MustNewConstMetric(
+			c.metrics.ioPsiFullDesc,
+			prometheus.CounterValue,
+			float64(metric.Io.Psi.Full),
+			jobLabels...,
+		)
+		ch <- prometheus.MustNewConstMetric(
+			c.metrics.ioPsiSomeDesc,
+			prometheus.CounterValue,
+			float64(metric.Io.Psi.Some),
 			jobLabels...,
 		)
 		for _, ioUsage := range metric.Io.Usage {

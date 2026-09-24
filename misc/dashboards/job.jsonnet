@@ -124,19 +124,24 @@ g.dashboard.new('PBS Job')
                   [queries.cgroupSwapRequested, queries.cgroupSwapUsed]
                 ),
               panels.timeseries.base(
+                'Threads',
+                'Total number of tasks in cgroup',
+                [queries.cgroupProcessCount, queries.cgroupThreadCount]
+              ),
+              panels.timeseries.base(
                 'Memory Page Fault',
                 'Total memory page faults of cgroup',
                 [queries.cgroupMemoryPgFault, queries.cgroupMemoryPgMajFault]
               ),
               panels.timeseries.base(
-                'Processes',
-                'Number of processes in cgroup by node',
-                [queries.cgroupProcessCount]
+                'CPU Pressure (PSI)',
+                'CPU pressure of the cgroup',
+                [queries.cgroupCpuPressureSome, queries.cgroupCpuPressureFull]
               ),
               panels.timeseries.base(
-                'Threads',
-                'Number of threads in cgroup by node',
-                [queries.cgroupThreadCount]
+                'Memory Pressure (PSI)',
+                'Memory pressure of the cgroup',
+                [queries.cgroupMemoryPressureSome, queries.cgroupMemoryPressureFull]
               ),
             ]), panelWidth=12, panelHeight=10
           ),

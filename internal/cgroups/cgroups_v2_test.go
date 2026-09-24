@@ -64,6 +64,10 @@ func TestStatV2(t *testing.T) {
 				UsageUsec:  1000000,
 				UserUsec:   1000000,
 				SystemUsec: 1000000,
+				PSI: &v2.PSIStats{
+					Some: &v2.PSIData{Total: 100 * microsecPerSecond},
+					Full: &v2.PSIData{Total: 50 * microsecPerSecond},
+				},
 			},
 			Hugetlb: []*v2.HugeTlbStat{
 				{
@@ -74,6 +78,10 @@ func TestStatV2(t *testing.T) {
 				},
 			},
 			Io: &v2.IOStat{
+				PSI: &v2.PSIStats{
+					Some: &v2.PSIData{Total: 200 * microsecPerSecond},
+					Full: &v2.PSIData{Total: 100 * microsecPerSecond},
+				},
 				Usage: []*v2.IOEntry{
 					{
 						Major:  253,
@@ -93,8 +101,12 @@ func TestStatV2(t *testing.T) {
 				InactiveFile: 5,
 				Pgfault:      0,
 				Pgmajfault:   0,
-				Usage:        222,
-				UsageLimit:   999,
+				PSI: &v2.PSIStats{
+					Some: &v2.PSIData{Total: 300 * microsecPerSecond},
+					Full: &v2.PSIData{Total: 150 * microsecPerSecond},
+				},
+				Usage:      222,
+				UsageLimit: 999,
 			},
 			Pids: &v2.PidsStat{
 				Current: 100,
@@ -172,5 +184,50 @@ func TestCpuCountV2(t *testing.T) {
 	}
 	if got != want {
 		t.Errorf("CpuCount() = %d, want %d", got, want)
+	}
+}
+
+func TestPsiTotals(t *testing.T) {
+	cgroup := &CgroupV2{}
+
+	tests := []struct {
+		name     string
+		input    *v2.PSIStats
+		wantSome uint64
+		wantFull uint64
+	}{
+		{
+			name: "Valid Some and Full",
+			input: &v2.PSIStats{
+				Some: &v2.PSIData{Total: 100 * microsecPerSecond},
+				Full: &v2.PSIData{Total: 50 * microsecPerSecond},
+			},
+			wantSome: 100,
+			wantFull: 50,
+		},
+		{
+			name:     "Nil PSIStats",
+			input:    nil,
+			wantSome: 0,
+			wantFull: 0,
+		},
+		{
+			name:     "Nil Some and Full",
+			input:    &v2.PSIStats{},
+			wantSome: 0,
+			wantFull: 0,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gotSome, gotFull := cgroup.PsiTotals(tt.input)
+			if gotSome != tt.wantSome {
+				t.Errorf("PsiTotals() some = %d, want %d", gotSome, tt.wantSome)
+			}
+			if gotFull != tt.wantFull {
+				t.Errorf("PsiTotals() full = %d, want %d", gotFull, tt.wantFull)
+			}
+		})
 	}
 }

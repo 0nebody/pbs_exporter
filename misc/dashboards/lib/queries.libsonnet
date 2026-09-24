@@ -90,6 +90,34 @@ local prometheusQuery = g.query.prometheus;
     + prometheusQuery.withEditorMode('code')
     + prometheusQuery.withLegendFormat('CPU Efficiency'),
 
+  cgroupCpuPressureSome:
+    prometheusQuery.new(
+      '$' + variables.datasource.name,
+      |||
+        sum by (jobid) (
+          rate(
+            pbs_cgroup_cpu_psi_some_total{instance=~"$node", jobid="$jobid"}[$__rate_interval]
+          )
+        )
+      |||
+    )
+    + prometheusQuery.withEditorMode('code')
+    + prometheusQuery.withLegendFormat('CPU Pressure (Some)'),
+
+  cgroupCpuPressureFull:
+    prometheusQuery.new(
+      '$' + variables.datasource.name,
+      |||
+        sum by (jobid) (
+          rate(
+            pbs_cgroup_cpu_psi_full_total{instance=~"$node", jobid="$jobid"}[$__rate_interval]
+          )
+        )
+      |||
+    )
+    + prometheusQuery.withEditorMode('code')
+    + prometheusQuery.withLegendFormat('CPU Pressure (Full)'),
+
   cgroupMemoryRequested:
     prometheusQuery.new(
       '$' + variables.datasource.name,
@@ -178,6 +206,34 @@ local prometheusQuery = g.query.prometheus;
     + prometheusQuery.withEditorMode('code')
     + prometheusQuery.withLegendFormat('Major Page Faults'),
 
+  cgroupMemoryPressureSome:
+    prometheusQuery.new(
+      '$' + variables.datasource.name,
+      |||
+        sum by (jobid) (
+          rate(
+            pbs_cgroup_mem_psi_some_total{instance=~"$node", jobid="$jobid"}[$__rate_interval]
+          )
+        )
+      |||
+    )
+    + prometheusQuery.withEditorMode('code')
+    + prometheusQuery.withLegendFormat('Memory Pressure (Some)'),
+
+  cgroupMemoryPressureFull:
+    prometheusQuery.new(
+      '$' + variables.datasource.name,
+      |||
+        sum by (jobid) (
+          rate(
+            pbs_cgroup_mem_psi_full_total{instance=~"$node", jobid="$jobid"}[$__rate_interval]
+          )
+        )
+      |||
+    )
+    + prometheusQuery.withEditorMode('code')
+    + prometheusQuery.withLegendFormat('Memory Pressure (Full)'),
+
   cgroupSwapRequested:
     prometheusQuery.new(
       '$' + variables.datasource.name,
@@ -225,21 +281,25 @@ local prometheusQuery = g.query.prometheus;
     prometheusQuery.new(
       '$' + variables.datasource.name,
       |||
-        pbs_cgroup_pid_usage{instance=~"$node", jobid="$jobid"}
+        sum by (jobid) (
+          pbs_cgroup_pid_usage{instance=~"$node", jobid="$jobid"}
+        )
       |||
     )
     + prometheusQuery.withEditorMode('code')
-    + prometheusQuery.withLegendFormat('{{instance}}'),
+    + prometheusQuery.withLegendFormat('Processes'),
 
   cgroupThreadCount:
     prometheusQuery.new(
       '$' + variables.datasource.name,
       |||
-        pbs_cgroup_thread_usage{instance=~"$node", jobid="$jobid"}
+        sum by (jobid) (
+          pbs_cgroup_thread_usage{instance=~"$node", jobid="$jobid"}
+        )
       |||
     )
     + prometheusQuery.withEditorMode('code')
-    + prometheusQuery.withLegendFormat('{{instance}}'),
+    + prometheusQuery.withLegendFormat('Threads'),
 
   cgroupGpuUtilisation:
     prometheusQuery.new(
