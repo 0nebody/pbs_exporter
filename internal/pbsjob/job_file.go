@@ -49,7 +49,7 @@ const (
 )
 
 var (
-	jobMap, jobMapOrder = NewJobMapCache(reflect.TypeOf(Job{}))
+	jobMap, jobMapOrder = NewJobMapCache(reflect.TypeFor[Job]())
 	jobAttrHeaderSize   = binary.Size(JobAttrHeader{})
 )
 

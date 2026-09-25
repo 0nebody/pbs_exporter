@@ -115,7 +115,7 @@ func TestJobMapCache(t *testing.T) {
 	}
 	wantOrder := JobMapKey{Name: "Resource_List", Resource: "mem"}
 
-	cache, order := NewJobMapCache(reflect.TypeOf(TestJob{}))
+	cache, order := NewJobMapCache(reflect.TypeFor[TestJob]())
 
 	if !reflect.DeepEqual(cache, wantCache) {
 		t.Errorf("NewJobMapCache() = %+v, want %+v", cache, wantCache)

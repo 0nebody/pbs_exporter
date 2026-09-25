@@ -233,7 +233,7 @@ func (j *Job) IsInteractive() bool {
 // runs." and "The job's primary execution host is the host that
 // supplies the vnode to satisfy the first chunk requested by the job."
 func (j *Job) IsPrimaryNode(hostname string) bool {
-	primaryNode := strings.Split(j.ExecHost, "+")[0]
+	primaryNode, _, _ := strings.Cut(j.ExecHost, "+")
 	isPrimaryNode := strings.HasPrefix(primaryNode, hostname)
 
 	return isPrimaryNode
@@ -244,7 +244,7 @@ func (j *Job) IsRunning() bool {
 }
 
 func (j *Job) Vnode() string {
-	primaryNode := strings.Split(j.ExecVnode, "+")[0]
+	primaryNode, _, _ := strings.Cut(j.ExecVnode, "+")
 
 	vnodeMatch := pbsVnodeRegexp.FindStringSubmatch(primaryNode)
 	if len(vnodeMatch) > 2 {
@@ -363,7 +363,7 @@ func PbsJobEvent(watcher *fsnotify.Watcher, logger *slog.Logger, pbsJobs *JobCac
 				logger.Debug("PBS Job file removed", "name", event.Name, "op", op)
 
 				fileName := filepath.Base(event.Name)
-				jobId := strings.Split(fileName, ".")[0]
+				jobId, _, _ := strings.Cut(fileName, ".")
 				pbsJobs.Delete(jobId)
 			}
 
